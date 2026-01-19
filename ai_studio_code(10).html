@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Travis Hinton | Digital Architect</title>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;500;800&family=Space+Mono:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;500;800&family=Space+Mono:ital,wght@0,400;1,400&display=swap"
+        rel="stylesheet">
+
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
@@ -26,10 +29,15 @@
             --font-tech: 'Space Mono', monospace;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
-            background-color: #f0f8ff; /* Matches the sky color */
+            background-color: #f0f8ff;
+            /* Matches the sky color */
             color: var(--text-main);
             font-family: var(--font-body);
             overflow-x: hidden;
@@ -43,7 +51,8 @@
             width: 100%;
             height: 100vh;
             z-index: 1;
-            pointer-events: none; /* Let clicks pass through to text */
+            pointer-events: none;
+            /* Let clicks pass through to text */
         }
 
         /* UI Overlay */
@@ -65,7 +74,8 @@
             line-height: 0.85;
             color: #1a1a1a;
             mix-blend-mode: multiply;
-            opacity: 0; /* Animated in */
+            opacity: 0;
+            /* Animated in */
             transform: translateY(50px);
         }
 
@@ -89,9 +99,10 @@
             position: relative;
             z-index: 2;
             background: white;
-            margin-top: 10vh; /* Allow some overlap */
+            margin-top: 10vh;
+            /* Allow some overlap */
             padding-bottom: 10vh;
-            box-shadow: 0 -50px 100px rgba(255,255,255,1);
+            box-shadow: 0 -50px 100px rgba(255, 255, 255, 1);
         }
 
         .section {
@@ -117,7 +128,10 @@
         /* Loader */
         .loader {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: #fff;
             z-index: 9999;
             display: flex;
@@ -140,12 +154,26 @@
         }
 
         @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {transform: translateX(-50%) translateY(0);}
-            40% {transform: translateX(-50%) translateY(-10px);}
-            60% {transform: translateX(-50%) translateY(-5px);}
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            40% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+
+            60% {
+                transform: translateX(-50%) translateY(-5px);
+            }
         }
     </style>
 </head>
+
 <body>
 
     <div class="loader">GENERATING TERRAIN...</div>
@@ -163,9 +191,9 @@
             <section class="section">
                 <span class="section-title">01. THE CONCEPT</span>
                 <p class="lead">
-                    Just like this terrain, modern web development is a blend of 
-                    <strong>structural foundation</strong> (the wireframe) and 
-                    <strong>refined aesthetic</strong> (the snow). 
+                    Just like this terrain, modern web development is a blend of
+                    <strong>structural foundation</strong> (the wireframe) and
+                    <strong>refined aesthetic</strong> (the snow).
                     <br><br>
                     I operate at the intersection where code becomes visual experience.
                 </p>
@@ -181,10 +209,13 @@
                 </div>
             </section>
 
-            <section class="section" style="background: var(--text-main); color: white; margin-top: 4rem; border-radius: 20px;">
+            <section class="section"
+                style="background: var(--text-main); color: white; margin-top: 4rem; border-radius: 20px;">
                 <span class="section-title" style="color: #fff;">03. CONTACT</span>
                 <p class="lead" style="margin-bottom: 2rem;">Ready to build something iconic?</p>
-                <a href="mailto:travis@travishinton.us" style="color: white; font-family: var(--font-display); font-size: 3rem; text-decoration: none; border-bottom: 1px solid white;">Let's Talk</a>
+                <a href="mailto:travis@travishinton.us"
+                    style="color: white; font-family: var(--font-display); font-size: 3rem; text-decoration: none; border-bottom: 1px solid white;">Let's
+                    Talk</a>
             </section>
         </div>
     </main>
@@ -208,49 +239,70 @@
         varying float vElevation;
         varying vec3 vNormal;
 
-        uniform float uTime;
-        uniform vec3 uColorWire;
+        uniform float uuTime; // Typo fix or unused
+        uniform vec3 uColorRock;
         uniform vec3 uColorSnow;
         uniform float uSnowLine;
 
-        // Grid function for wireframe effect
-        float grid(vec2 uv, float width) {
-            vec2 grid = fract(uv * 30.0);
-            return step(width, grid.x) * step(width, grid.y);
+        // SIMPLEX NOISE FUNCTION (GLSL)
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+        float snoise(vec2 v) {
+            const vec4 C = vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
+                                0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
+                                -0.577350269189626,  // -1.0 + 2.0 * C.x
+                                0.024390243902439); // 1.0 / 41.0
+            vec2 i  = floor(v + dot(v, C.yy) );
+            vec2 x0 = v - i + dot(i, C.xx);
+            vec2 i1;
+            i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+            vec4 x12 = x0.xyxy + C.xxzz;
+            x12.xy -= i1;
+            i = mod289(i); // Avoid truncation effects in permutation
+            vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+                + i.x + vec3(0.0, i1.x, 1.0 ));
+            vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+            m = m*m ;
+            m = m*m ;
+            vec3 x = 2.0 * fract(p * C.www) - 1.0;
+            vec3 h = abs(x) - 0.5;
+            vec3 ox = floor(x + 0.5);
+            vec3 a0 = x - ox;
+            m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+            vec3 g;
+            g.x  = a0.x  * x0.x  + h.x  * x0.y;
+            g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+            return 130.0 * dot(m, g);
         }
 
         void main() {
-            // Lighting approximation
+            // Light Direction
             vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-            float diff = max(dot(vNormal, lightDir), 0.0);
+            // Add some noise to the normal for fake bump mapping
+            float bump = snoise(vUv * 50.0) * 0.1;
+            float diff = max(dot(normalize(vNormal + vec3(bump)), lightDir), 0.0);
             
-            // Wireframe Pattern
-            float g = grid(vUv, 0.95); // 0.95 creates thin lines
-            vec3 wireColor = uColorWire;
+            // Rock Texture
+            // Layer 1: Fine grain
+            float grain = snoise(vUv * 150.0) * 0.05;
+            // Layer 2: Strata (stretched noise)
+            float strata = snoise(vec2(vUv.x * 20.0, vUv.y * 5.0)) * 0.1;
+            
+            vec3 rockColor = uColorRock + (grain + strata);
             
             // Snow Mixing logic
-            // Calculate blend factor based on height (vElevation)
-            float mixStrength = smoothstep(uSnowLine - 5.0, uSnowLine + 5.0, vElevation);
+            // Add noise to the snow line for natural look
+            float snowNoise = snoise(vUv * 10.0) * 1.5;
+            float mixStrength = smoothstep(uSnowLine - 2.0 + snowNoise, uSnowLine + 2.0 + snowNoise, vElevation);
             
-            // Wireframe visibility logic: 
-            // If we are low (mixStrength 0), we want wireframe (0 where lines are, 1 where holes are) -> Invert logic
-            // Actually simpler: Base color is transparent/foggy, lines are drawn.
+            vec3 finalColor = mix(rockColor, uColorSnow, mixStrength);
             
-            vec3 finalColor = mix(wireColor, uColorSnow, mixStrength);
+            // Add shadow/light
+            finalColor *= (0.5 + diff * 0.5); // Diffuse lighting
             
-            // Add shadow/light to snow
-            if(mixStrength > 0.1) {
-                finalColor *= (0.8 + diff * 0.2); // Simple shading
-            }
-
-            // Transparency logic for the "Wireframe" parts
-            // We want the spaces BETWEEN lines to be transparent at the bottom
-            float alpha = 1.0;
-            
-            if (mixStrength < 0.5) {
-                // If it's the wireframe part, make the "grid holes" transparent
-                if (g > 0.1) discard; 
-            }
+            // Simple rim light or fog integration can happen here if needed
 
             gl_FragColor = vec4(finalColor, 1.0);
             
@@ -281,28 +333,41 @@
 
         // --- 2. TERRAIN GENERATION ---
         const simplex = new SimplexNoise();
-        const geometry = new THREE.PlaneGeometry(120, 80, 120, 80); // Width, Height, Segments
-        
+        const geometry = new THREE.PlaneGeometry(120, 80, 200, 150); // Increased resolution for sharper peaks
+
         const count = geometry.attributes.position.count;
         const snowLine = 6.0;
 
         // Displace vertices based on noise
         for (let i = 0; i < count; i++) {
             const x = geometry.attributes.position.getX(i);
-            const y = geometry.attributes.position.getY(i); // This is actually Z in plane, but we'll rotate
-            
-            // Layered noise for realistic mountains
-            let noise = simplex.noise2D(x * 0.05, y * 0.05) * 8;
-            noise += simplex.noise2D(x * 0.1, y * 0.1) * 3;
-            noise += simplex.noise2D(x * 0.25, y * 0.25) * 1;
-            
+            const y = geometry.attributes.position.getY(i);
+
+            // RIDGED NOISE FOR SHARP PEAKS
+            // 1. Primary Shape (Low freq, high amp)
+            let n1 = simplex.noise2D(x * 0.03, y * 0.03);
+            n1 = Math.abs(n1);      // Fold 
+            n1 = 1.0 - n1;          // Invert
+            n1 = Math.pow(n1, 3);   // Sharpen
+            let noise = n1 * 15;
+
+            // 2. Secondary Shape (Mid freq)
+            let n2 = simplex.noise2D(x * 0.1, y * 0.1);
+            noise += n2 * 2;
+
+            // 3. Texture (High freq)
+            let n3 = simplex.noise2D(x * 0.3, y * 0.3);
+            noise += n3 * 0.5;
+
             // Make center higher, edges lower
-            const dist = Math.sqrt(x*x + y*y);
+            const dist = Math.sqrt(x * x + y * y);
             const mask = Math.max(0, 1 - dist / 50);
-            
-            geometry.attributes.position.setZ(i, Math.max(0, noise * mask * 3));
+
+            // Apply height with mask
+            // Increased multiplier for more dramatic height
+            geometry.attributes.position.setZ(i, Math.max(0, noise * mask * 4));
         }
-        
+
         geometry.computeVertexNormals();
         geometry.rotateX(-Math.PI / 2); // Rotate to lay flat
 
@@ -311,7 +376,7 @@
             vertexShader: document.getElementById('vertexShader').textContent,
             fragmentShader: document.getElementById('fragmentShader').textContent,
             uniforms: {
-                uColorWire: { value: new THREE.Color(0x222222) }, // Dark Grey Wire
+                uColorRock: { value: new THREE.Color(0x2b2b2b) }, // Dark Grey Rock
                 uColorSnow: { value: new THREE.Color(0xffffff) }, // White Snow
                 uSnowLine: { value: snowLine },
                 uTime: { value: 0 }
@@ -329,7 +394,7 @@
         const treeMat = new THREE.MeshBasicMaterial({ color: 0x2d4c1e }); // Pine Green
         const treeCount = 400;
         const trees = new THREE.InstancedMesh(treeGeo, treeMat, treeCount);
-        
+
         const dummy = new THREE.Object3D();
         const positions = geometry.attributes.position.array;
         let treeIdx = 0;
@@ -357,7 +422,7 @@
         // --- 4. BIRDS (Low Poly) ---
         const birds = [];
         const birdCount = 35;
-        
+
         // Simple V-shape bird geometry
         const birdGeo = new THREE.BufferGeometry();
         const birdVertices = new Float32Array([
@@ -377,15 +442,15 @@
                     10 + Math.random() * 15,
                     (Math.random() - 0.5) * 30
                 );
-                
+
                 this.speed = 0.05 + Math.random() * 0.05;
                 this.angle = Math.random() * Math.PI * 2;
                 this.yOffset = Math.random() * 100;
-                
+
                 // State
                 this.state = 'flying'; // flying, landing, perched
                 this.target = null;
-                
+
                 scene.add(this.mesh);
             }
 
@@ -393,16 +458,16 @@
                 if (this.state === 'flying') {
                     // Flocking-ish circular motion
                     this.angle += this.speed * 0.1;
-                    
+
                     this.mesh.position.x += Math.cos(this.angle) * this.speed;
                     this.mesh.position.z += Math.sin(this.angle) * this.speed;
-                    
+
                     // Bobbing
                     this.mesh.position.y += Math.sin(time * 3 + this.yOffset) * 0.02;
 
                     // Orient to direction
                     this.mesh.rotation.y = -this.angle;
-                    
+
                     // Wing flap (scale x)
                     this.mesh.scale.x = 1 + Math.sin(time * 15) * 0.5;
 
@@ -431,7 +496,7 @@
             }
         }
 
-        for(let i=0; i<birdCount; i++) {
+        for (let i = 0; i < birdCount; i++) {
             birds.push(new Bird());
         }
 
@@ -440,7 +505,7 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            
+
             const time = clock.getElapsedTime();
             terrainMaterial.uniforms.uTime.value = time;
 
@@ -453,11 +518,11 @@
 
             renderer.render(scene, camera);
         }
-        
+
         animate();
 
         // --- 6. UI ANIMATIONS & SCROLL ---
-        
+
         // Remove Loader
         window.onload = () => {
             const loader = document.querySelector('.loader');
@@ -499,4 +564,5 @@
 
     </script>
 </body>
+
 </html>

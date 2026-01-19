@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travis Hinton | Digital Architect</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;500;800&family=Space+Mono:ital,wght@0,400;1,400&display=swap"
+        rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
+
+    <style>
+        :root {
+            --text: #ffffff;
+            --accent: #FF4D00;
+            /* A sunset orange to match the Flatirons sun */
+        }
+
+        body {
+            margin: 0;
+            background-color: #1a1a1a;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        main {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            /* Gradient to make text readable over complex image */
+            background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.4) 100%);
+        }
+
+        h1 {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(4rem, 15vw, 12rem);
+            line-height: 0.8;
+            margin: 0;
+            text-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            mix-blend-mode: overlay;
+        }
+
+        .role {
+            font-family: 'Space Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .content {
+            background: #050505;
+            min-height: 100vh;
+            padding: 8rem 5vw;
+            position: relative;
+            z-index: 2;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+        }
+
+        h2 {
+            font-family: 'Instrument Serif', serif;
+            font-size: 4rem;
+            margin-bottom: 2rem;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: #ccc;
+            margin-bottom: 2rem;
+        }
+
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Space Mono', monospace;
+            color: var(--accent);
+            transition: opacity 1s ease;
+        }
+
+        @media (max-width: 768px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="loading-screen">INITIALIZING TERRAIN DATA...</div>
+
+    <div id="canvas-container"></div>
+
+    <main>
+        <section class="hero">
+            <h1>Travis<br>Hinton</h1>
+            <div class="role">Front-End Architecture & Design</div>
+        </section>
+
+        <section class="content">
+            <div class="grid-layout">
+                <div>
+                    <h2>The Process</h2>
+                    <p>
+                        Just as the Flatirons were formed by massive geological pressure over millions of years,
+                        great digital products are formed by the pressure of clear design thinking and rigorous
+                        engineering.
+                    </p>
+                    <p>
+                        I take the raw "wireframe" of an idea and render it into a high-fidelity reality.
+                    </p>
+                </div>
+                <div>
+                    <!-- Placeholder for work list -->
+                    <div
+                        style="border-bottom: 1px solid #333; padding: 1rem 0; font-family: 'Space Mono'; display: flex; justify-content: space-between;">
+                        <span>01. TECHFLOW</span>
+                        <span>2025</span>
+                    </div>
+                    <div
+                        style="border-bottom: 1px solid #333; padding: 1rem 0; font-family: 'Space Mono'; display: flex; justify-content: space-between;">
+                        <span>02. ALCHEMIST</span>
+                        <span>2024</span>
+                    </div>
+                    <div
+                        style="border-bottom: 1px solid #333; padding: 1rem 0; font-family: 'Space Mono'; display: flex; justify-content: space-between;">
+                        <span>03. YODEZEEN</span>
+                        <span>2024</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 8rem; text-align: center;">
+                <h2 style="font-size: 3rem;">Ready to Climb?</h2>
+                <a href="mailto:travis@travishinton.us"
+                    style="color: #fff; font-size: 1.5rem; text-transform: uppercase; text-decoration: none; border-bottom: 2px solid var(--accent); padding-bottom: 5px;">Contact
+                    Me</a>
+            </div>
+        </section>
+    </main>
+
+    <!-- SHADERS -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        uniform float uTime;
+        uniform sampler2D uTexture;
+        uniform vec2 uMouse;
+        
+        varying vec2 vUv;
+        varying float vElevation;
+        varying vec3 vNormal;
+        
+        void main() {
+            vUv = uv;
+            
+            // Read texture color
+            vec4 color = texture2D(uTexture, uv);
+            
+            // Calculate brightness (0.0 to 1.0)
+            float brightness = (color.r + color.g + color.b) / 3.0;
+            
+            // Save elevation for fragment shader
+            vElevation = brightness;
+            
+            // DISPLACEMENT LOGIC
+            // We move the vertex along its normal based on how bright the pixel is.
+            // Brighter (snow) = Higher. Darker (trees) = Lower.
+            vec3 newPosition = position + normal * brightness * 4.0; 
+            
+            // Add a subtle "breathing" motion to the mountain
+            newPosition.z += sin(uTime * 0.5 + position.x * 2.0) * 0.2;
+            
+            // Mouse parallax tilt
+            newPosition.x += (uMouse.x * 2.0 - 1.0) * 1.0 * brightness;
+            newPosition.y += (uMouse.y * 2.0 - 1.0) * 1.0 * brightness;
+
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+            vNormal = normal;
+        }
+    </script>
+
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        uniform sampler2D uTexture;
+        uniform float uTime;
+        
+        varying vec2 vUv;
+        varying float vElevation;
+
+        void main() {
+            vec4 texColor = texture2D(uTexture, vUv);
+            
+            // WIREFRAME SCANNER LOGIC
+            // Create a moving line that goes up and down
+            float scanY = 0.5 + sin(uTime * 0.2) * 0.6; 
+            
+            // Logic to determine if we are in "Wireframe Mode" (below the scanner)
+            // or "Reality Mode" (above the scanner)
+            float scanWidth = 0.1;
+            float isWireframe = smoothstep(scanY + scanWidth, scanY, vUv.y);
+            
+            // Generate a grid pattern for the wireframe look
+            float gridScale = 50.0;
+            float lineThickness = 0.05;
+            vec2 grid = fract(vUv * gridScale);
+            float lines = step(lineThickness, grid.x) * step(lineThickness, grid.y);
+            // Invert to get lines
+            lines = 1.0 - lines; 
+            
+            // --- COLOR MIXING ---
+            vec3 finalColor;
+            
+            // The "Reality" color (The Photo)
+            vec3 realColor = texColor.rgb;
+            
+            // The "Wireframe" color (Dark grey bg + White lines)
+            vec3 wireColor = vec3(0.1, 0.1, 0.1) + vec3(lines * 0.8);
+            
+            // Mix them based on the scan line position
+            finalColor = mix(realColor, wireColor, isWireframe);
+            
+            // Add a "Scanner Bar" highlight
+            float bar = 1.0 - smoothstep(0.0, 0.02, abs(vUv.y - scanY));
+            finalColor += vec3(1.0, 0.3, 0.0) * bar; // Orange scanner line
+
+            // Depth/Atmosphere
+            // Fade to black at the bottom edges
+            float edge = 1.0 - vUv.y;
+            // finalColor *= smoothstep(0.0, 0.2, vUv.y);
+
+            gl_FragColor = vec4(finalColor, 1.0);
+        }
+    </script>
+
+    <script>
+        // --------------------------------------------------------
+        // CONFIGURATION
+        // --------------------------------------------------------
+        // REPLACE THIS URL WITH YOUR FLATIRONS IMAGE URL
+        // It works best with a high-contrast image (Snow = Bright, Trees = Dark)
+        const IMAGE_URL = 'Flatirons_Winter_Sunrise_edit_2.jpg';
+        // --------------------------------------------------------
+
+        const canvasContainer = document.getElementById('canvas-container');
+
+        // Scene Setup
+        const scene = new THREE.Scene();
+        // Dark background to match the "space" or night feel
+        scene.background = new THREE.Color(0x050505);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.z = 12;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        canvasContainer.appendChild(renderer.domElement);
+
+        // Mouse Tracking
+        const mouse = new THREE.Vector2(0.5, 0.5);
+        window.addEventListener('mousemove', (e) => {
+            // Normalize mouse (0 to 1)
+            mouse.x = e.clientX / window.innerWidth;
+            mouse.y = 1.0 - (e.clientY / window.innerHeight);
+        });
+
+        // --------------------------------------------------------
+        // THE MOUNTAIN PLANE
+        // --------------------------------------------------------
+        const textureLoader = new THREE.TextureLoader();
+
+        // Load the image
+        const onTextureLoaded = (texture) => {
+            // Hide Loader
+            const loader = document.querySelector('.loading-screen');
+            if (loader) {
+                loader.style.opacity = 0;
+                setTimeout(() => loader.remove(), 1000);
+            }
+
+            initScene(texture);
+        };
+
+        const onTextureError = (err) => {
+            console.error("Error loading texture:", err);
+            console.warn("Possible CORS issue if opening via file://. Proceeding with fallback.");
+
+            // Hide Loader even on error
+            const loader = document.querySelector('.loading-screen');
+            if (loader) {
+                loader.style.opacity = 0;
+                setTimeout(() => loader.remove(), 1000);
+            }
+
+            // Create a small data URL or solid color texture as fallback if needed, 
+            // or just pass null and handle it in the shader/material.
+            // For now, let's just proceed with a null texture and see if the shader handles it, 
+            // or create a 1x1 white pixel texture.
+            const fallbackTexture = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat);
+            fallbackTexture.needsUpdate = true;
+            initScene(fallbackTexture);
+        };
+
+        textureLoader.load(
+            IMAGE_URL,
+            onTextureLoaded,
+            undefined, // onProgress
+            onTextureError
+        );
+
+        function initScene(texture) {
+            // Create Geometry (High segment count for displacement details)
+            // 20 width, 12 height, 128 segments
+            const geometry = new THREE.PlaneGeometry(20, 12, 256, 256);
+
+            const material = new THREE.ShaderMaterial({
+                vertexShader: document.getElementById('vertexShader').textContent,
+                fragmentShader: document.getElementById('fragmentShader').textContent,
+                uniforms: {
+                    uTime: { value: 0 },
+                    uTexture: { value: texture },
+                    uMouse: { value: mouse }
+                },
+                side: THREE.DoubleSide
+            });
+
+            const plane = new THREE.Mesh(geometry, material);
+            scene.add(plane);
+
+            // Animate
+            const clock = new THREE.Clock();
+
+            function animate() {
+                const time = clock.getElapsedTime();
+                material.uniforms.uTime.value = time;
+                material.uniforms.uMouse.value.lerp(mouse, 0.05); // Smooth mouse
+
+                // Subtle rotation of the whole plane
+                plane.rotation.z = Math.sin(time * 0.1) * 0.02;
+
+                // Animate Birds
+                animateBirds(time);
+                // Animate Snow
+                animateSnow();
+
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // --------------------------------------------------------
+        // BIRDS (Simple Geometry)
+        // --------------------------------------------------------
+        const birds = [];
+        const birdGeo = new THREE.BufferGeometry();
+        // V-shape vertices
+        const birdVerts = new Float32Array([
+            0.2, 0, 0,
+            -0.2, 0, 0,
+            0, 0, 0.2
+        ]);
+        birdGeo.setAttribute('position', new THREE.BufferAttribute(birdVerts, 3));
+        const birdMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+
+        for (let i = 0; i < 15; i++) {
+            const bird = new THREE.Mesh(birdGeo, birdMat);
+            bird.userData = {
+                speed: 0.05 + Math.random() * 0.05,
+                center: new THREE.Vector3((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 5, 2),
+                radius: 2 + Math.random() * 3,
+                angle: Math.random() * Math.PI * 2
+            };
+            scene.add(bird);
+            birds.push(bird);
+        }
+
+        function animateBirds(time) {
+            birds.forEach(bird => {
+                const ud = bird.userData;
+                ud.angle += ud.speed;
+
+                // Circular motion around a center point
+                bird.position.x = ud.center.x + Math.cos(ud.angle) * ud.radius;
+                bird.position.y = ud.center.y + Math.sin(ud.angle * 0.5) * 1; // Slight up/down
+                bird.position.z = ud.center.z + Math.sin(ud.angle) * ud.radius * 0.5;
+
+                // Rotation to face direction roughly
+                bird.rotation.y = -ud.angle;
+                bird.rotation.z = Math.sin(time * 10) * 0.2; // Flap
+            });
+        }
+
+        // --------------------------------------------------------
+        // SNOW PARTICLES
+        // --------------------------------------------------------
+        const snowGeo = new THREE.BufferGeometry();
+        const snowCount = 1000;
+        const posArray = new Float32Array(snowCount * 3);
+        const velArray = []; // Store velocities
+
+        for (let i = 0; i < snowCount * 3; i += 3) {
+            // X, Y, Z
+            posArray[i] = (Math.random() - 0.5) * 25; // Wide spread
+            posArray[i + 1] = (Math.random() - 0.5) * 15;
+            posArray[i + 2] = (Math.random() - 0.5) * 10 + 5; // Closer to camera
+
+            velArray.push({
+                y: -(0.02 + Math.random() * 0.03), // Fall speed
+                x: (Math.random() - 0.5) * 0.01 // Wind sway
+            });
+        }
+
+        snowGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const snowMat = new THREE.PointsMaterial({
+            size: 0.05,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.8
+        });
+        const snowSystem = new THREE.Points(snowGeo, snowMat);
+        scene.add(snowSystem);
+
+        function animateSnow() {
+            const positions = snowSystem.geometry.attributes.position.array;
+
+            for (let i = 0; i < snowCount; i++) {
+                const idx = i * 3;
+
+                // Update Y
+                positions[idx + 1] += velArray[i].y;
+                // Update X (Wind)
+                positions[idx] += velArray[i].x;
+
+                // Reset if too low
+                if (positions[idx + 1] < -8) {
+                    positions[idx + 1] = 8;
+                }
+            }
+            snowSystem.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // --------------------------------------------------------
+        // RESIZE HANDLER
+        // --------------------------------------------------------
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --------------------------------------------------------
+        // SMOOTH SCROLL UI
+        // --------------------------------------------------------
+        const lenis = new Lenis();
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+    </script>
+</body>
+
+</html>

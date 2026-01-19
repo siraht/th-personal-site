@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbit | Personal Portfolio</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syncopate:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <style>
+        :root {
+            --c-bg: #050505;
+            --c-text: #e0e0e0;
+            --c-accent: #ff4d4d;
+            /* Red shift accent */
+            --c-hud: rgba(255, 255, 255, 0.3);
+            --font-head: 'Syncopate', sans-serif;
+            --font-body: 'Space Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--c-bg);
+            color: var(--c-text);
+            font-family: var(--font-body);
+            overflow-x: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* 3D Canvas Background */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+            /* Let scroll pass through */
+            opacity: 0;
+            /* Fade in on load */
+            transition: opacity 1.5s ease-out;
+        }
+
+        /* Grain Overlay for Texture */
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.07;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* UI HUD Elements */
+        .hud {
+            position: fixed;
+            z-index: 3;
+            padding: 2rem;
+            width: 100%;
+            height: 100vh;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.8rem;
+            color: var(--c-hud);
+        }
+
+        .hud-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-size: 0.7rem;
+            color: var(--c-hud);
+        }
+
+        .coordinates {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Main Content Scroll Areas */
+        main {
+            position: relative;
+            z-index: 4;
+        }
+
+        section {
+            height: 120vh;
+            /* Extra scroll space */
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 10vw;
+            position: relative;
+        }
+
+        /* Typography Styling */
+        h1 {
+            font-family: var(--font-head);
+            font-size: clamp(3rem, 8vw, 10rem);
+            font-weight: 700;
+            text-transform: uppercase;
+            line-height: 0.85;
+            letter-spacing: -0.02em;
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
+            mix-blend-mode: exclusion;
+        }
+
+        h1 span {
+            display: block;
+            color: white;
+            -webkit-text-stroke: 0;
+        }
+
+        h2 {
+            font-family: var(--font-head);
+            font-size: clamp(2rem, 4vw, 5rem);
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+        }
+
+        p {
+            max-width: 40ch;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .hero-text {
+            text-align: center;
+            align-items: center;
+        }
+
+        .mid-text {
+            align-items: flex-start;
+            text-align: left;
+        }
+
+        .final-text {
+            align-items: flex-end;
+            text-align: right;
+        }
+
+        /* Loading Screen */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: var(--font-body);
+            transition: transform 1s cubic-bezier(0.8, 0, 0.2, 1);
+        }
+
+        .btn {
+            display: inline-block;
+            border: 1px solid var(--c-text);
+            padding: 1rem 2rem;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: var(--c-text);
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .btn:hover {
+            background: var(--c-text);
+            color: var(--c-bg);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Loading Overlay -->
+    <div class="loader" id="loader">INITIALIZING SYSTEM...</div>
+
+    <!-- 3D Scene Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Grain Overlay -->
+    <div class="noise-overlay"></div>
+
+    <!-- Fixed HUD -->
+    <div class="hud">
+        <div class="hud-header">
+            <span>Sys.Ver.2026</span>
+            <span>Orbital mechanics</span>
+        </div>
+        <div class="hud-footer">
+            <div class="coordinates">
+                X: <span id="co-x">00.00</span><br>
+                Y: <span id="co-y">00.00</span><br>
+                Z: <span id="co-z">00.00</span>
+            </div>
+            <span>// SCROLL TO NAVIGATE</span>
+        </div>
+    </div>
+
+    <!-- Scrollable Content -->
+    <main>
+        <!-- Section 1: The Galaxy View -->
+        <section class="hero-text">
+            <h1>The<br><span>System</span></h1>
+            <p>We are just a speck of dust suspended in a sunbeam. Exploring digital frontiers.</p>
+        </section>
+
+        <!-- Section 2: The Approach -->
+        <section class="mid-text">
+            <h2>The<br>Approach</h2>
+            <p>Design is not just what it looks like and feels like. Design is how it works. Navigating through
+                complexity to find simplicity.</p>
+        </section>
+
+        <!-- Section 3: The Arrival (Earth) -->
+        <section class="final-text">
+            <h2>Home<br>Base</h2>
+            <p>Located on Earth. Available globally. <br>Building immersive web experiences that defy gravity.</p>
+            <a href="#" class="btn">Initiate Contact</a>
+        </section>
+
+        <!-- Spacer for end scrolling -->
+        <div style="height: 50vh;"></div>
+    </main>
+
+    <script>
+        // --- 1. SETUP ---
+        const container = document.getElementById('canvas-container');
+        const loader = document.getElementById('loader');
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050505, 0.002); // Distance fog for depth
+
+        // Camera setup
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        // Renderer setup
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Performance optimization
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        container.appendChild(renderer.domElement);
+
+        // --- 2. OBJECTS ---
+
+        const textureLoader = new THREE.TextureLoader();
+
+        // A. The Sun (Center)
+        const sunGeometry = new THREE.SphereGeometry(10, 64, 64);
+        const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+        scene.add(sun);
+
+        // Sun Glow (Sprite)
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: textureLoader.load('https://assets.codepen.io/122136/lens-flare.png'), // Simple glow asset
+            color: 0xffffee,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            opacity: 0.7
+        });
+        const sunGlow = new THREE.Sprite(spriteMaterial);
+        sunGlow.scale.set(60, 60, 1);
+        sun.add(sunGlow);
+
+        // B. Stars (Particle System)
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsCount = 3000;
+        const posArray = new Float32Array(starsCount * 3);
+
+        for (let i = 0; i < starsCount * 3; i++) {
+            // Spread stars wide
+            posArray[i] = (Math.random() - 0.5) * 800;
+        }
+
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const starsMaterial = new THREE.PointsMaterial({
+            size: 0.5,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.8,
+        });
+        const starMesh = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(starMesh);
+
+        // C. Planet Factory & Data
+        const planetData = [
+            { name: 'Mercury', size: 0.8, color: 0xaaaaaa, orbit: 25, speed: 0.04, rotation: 0.01, texture: 'https://upload.wikimedia.org/wikipedia/commons/3/30/Mercury_map.jpg' },
+            { name: 'Venus', size: 1.9, color: 0xffcc33, orbit: 40, speed: 0.015, rotation: 0.002, texture: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Solarsystemscope_texture_2k_venus_atmosphere.jpg' },
+            { name: 'Earth', size: 2.0, color: 0x2233ff, orbit: 60, speed: 0.01, rotation: 0.02, texture: 'https://upload.wikimedia.org/wikipedia/commons/c/c3/Solarsystemscope_texture_8k_earth_daymap.jpg', hasClouds: true },
+            { name: 'Mars', size: 1.1, color: 0xff4422, orbit: 80, speed: 0.008, rotation: 0.018, texture: 'https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg' },
+            { name: 'Jupiter', size: 4.5, color: 0xffaa88, orbit: 120, speed: 0.004, rotation: 0.04, texture: 'https://upload.wikimedia.org/wikipedia/commons/2/2b/Jupiter_Texture_Map.png' },
+            { name: 'Saturn', size: 3.8, color: 0xffddaa, orbit: 160, speed: 0.002, rotation: 0.038, texture: 'https://upload.wikimedia.org/wikipedia/commons/1/1e/Solarsystemscope_texture_2k_saturn.jpg', hasRings: true },
+            { name: 'Uranus', size: 1.6, color: 0x88ddff, orbit: 200, speed: 0.001, rotation: 0.03, texture: 'https://upload.wikimedia.org/wikipedia/commons/9/95/Solarsystemscope_texture_2k_uranus.jpg' },
+            { name: 'Neptune', size: 1.5, color: 0x2244ff, orbit: 240, speed: 0.0005, rotation: 0.032, texture: 'https://upload.wikimedia.org/wikipedia/commons/1/1e/Solarsystemscope_texture_2k_neptune.jpg' }
+        ];
+
+        const planets = [];
+
+        planetData.forEach(data => {
+            const group = new THREE.Group();
+
+            // Orbit Ring (Visual Guide)
+            const ringGeo = new THREE.RingGeometry(data.orbit, data.orbit + 0.2, 128);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.1 });
+            const orbitRing = new THREE.Mesh(ringGeo, ringMat);
+            orbitRing.rotation.x = Math.PI / 2;
+            scene.add(orbitRing);
+
+            // Planet Mesh
+            const geo = new THREE.SphereGeometry(data.size, 64, 64);
+            const mat = new THREE.MeshStandardMaterial({
+                map: textureLoader.load(data.texture),
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            group.add(mesh);
+
+            // Special Case: Earth Clouds
+            if (data.hasClouds) {
+                const cloudGeo = new THREE.SphereGeometry(data.size + 0.05, 64, 64);
+                const cloudMat = new THREE.MeshStandardMaterial({
+                    map: textureLoader.load('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Earth_cloud_map.jpg/2880px-Earth_cloud_map.jpg'),
+                    transparent: true,
+                    opacity: 0.4,
+                    blending: THREE.AdditiveBlending
+                });
+                const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+                group.add(clouds);
+                group.userData.clouds = clouds;
+            }
+
+            // Special Case: Saturn Rings
+            if (data.hasRings) {
+                const innerRadius = data.size * 1.4;
+                const outerRadius = data.size * 2.5;
+                const ringGeo = new THREE.RingGeometry(innerRadius, outerRadius, 64);
+                const ringMat = new THREE.MeshStandardMaterial({
+                    map: textureLoader.load('https://upload.wikimedia.org/wikipedia/commons/b/b1/Saturn_Rings.png'),
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const saturnRings = new THREE.Mesh(ringGeo, ringMat);
+                saturnRings.rotation.x = Math.PI / 2.2; // Tilted rings
+                group.add(saturnRings);
+            }
+
+            // Initial position based on orbit
+            const angle = Math.random() * Math.PI * 2;
+            group.position.set(Math.cos(angle) * data.orbit, 0, Math.sin(angle) * data.orbit);
+
+            scene.add(group);
+            planets.push({
+                mesh: mesh,
+                group: group,
+                data: data,
+                angle: angle
+            });
+        });
+
+        // E. Reference for Earth (for GSAP)
+        const earthData = planets.find(p => p.data.name === 'Earth');
+        const earthGroup = earthData.group;
+        const earth = earthData.mesh;
+
+        // --- 3. LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.PointLight(0xffffff, 3, 600);
+        sunLight.position.set(0, 0, 0);
+        scene.add(sunLight);
+
+        // Core glow for the sun
+        const sunGlowLight = new THREE.PointLight(0xffaa00, 2, 50);
+        scene.add(sunGlowLight);
+
+        // --- 4. ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            const elapsedTime = clock.getElapsedTime();
+
+            // Animate all planets
+            planets.forEach(p => {
+                // Orbital movement
+                p.angle += p.data.speed * 0.1;
+                p.group.position.x = Math.cos(p.angle) * p.data.orbit;
+                p.group.position.z = Math.sin(p.angle) * p.data.orbit;
+
+                // Self rotation
+                p.mesh.rotation.y += p.data.rotation;
+
+                // Animate clouds if present
+                if (p.group.userData.clouds) {
+                    p.group.userData.clouds.rotation.y += p.data.rotation * 1.2;
+                }
+            });
+
+            // Sun subtle pulse
+            sun.scale.setScalar(1 + Math.sin(elapsedTime * 2) * 0.02);
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // --- 5. GSAP SCROLL ANIMATION ---
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Initial Camera Position (Top Down-ish view of the system)
+        camera.position.set(0, 80, 250);
+        camera.lookAt(0, 0, 0);
+
+        // Wait for textures to load
+        window.addEventListener('load', () => {
+            loader.style.transform = 'translateY(-100%)';
+            document.getElementById('canvas-container').style.opacity = '1';
+
+            initScrollAnimations();
+        });
+
+        function initScrollAnimations() {
+            const tl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: "body",
+                    start: "top top",
+                    end: "bottom bottom",
+                    scrub: 1.5,
+                }
+            });
+
+            const updateHud = () => {
+                document.getElementById('co-x').innerText = camera.position.x.toFixed(2);
+                document.getElementById('co-y').innerText = camera.position.y.toFixed(2);
+                document.getElementById('co-z').innerText = camera.position.z.toFixed(2);
+            };
+
+            // STEP 1: Dive from high view into the system
+            tl.to(camera.position, {
+                x: 30,
+                y: 20,
+                z: 150,
+                duration: 5,
+                ease: "power2.inOut",
+                onUpdate: updateHud
+            })
+
+                // STEP 2: Approach Earth and track it
+                // Since Earth is orbiting, we'll try to sync the camera to its general neighborhood
+                .to(camera.position, {
+                    onUpdate: function () {
+                        // Dynamically follow Earth's position
+                        const targetX = earthGroup.position.x - 10;
+                        const targetY = earthGroup.position.y + 5;
+                        const targetZ = earthGroup.position.z + 15;
+
+                        camera.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 0.1);
+                        camera.lookAt(earthGroup.position);
+                        updateHud();
+                    },
+                    duration: 10,
+                    ease: "power1.inOut"
+                })
+
+                // STEP 3: Final focus
+                .to(camera.position, {
+                    onUpdate: function () {
+                        const targetX = earthGroup.position.x + 8;
+                        const targetY = earthGroup.position.y + 2;
+                        const targetZ = earthGroup.position.z + 8;
+
+                        camera.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 0.1);
+                        camera.lookAt(earthGroup.position);
+                        updateHud();
+                    },
+                    duration: 10
+                });
+
+            // Star warp effect
+            ScrollTrigger.create({
+                onUpdate: (self) => {
+                    const vel = self.getVelocity();
+                    starMesh.scale.z = 1 + Math.abs(vel / 500);
+                    starMesh.rotation.z += 0.001;
+                }
+            });
+        }
+
+        // --- 6. RESIZE HANDLER ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+
+</html>
