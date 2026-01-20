@@ -187,6 +187,7 @@
     <!-- SHADERS -->
     <script id="vertexShader" type="x-shader/x-vertex">
         uniform float uTime;
+        uniform float uScroll;
         uniform sampler2D uTexture;
         uniform vec2 uMouse;
         
@@ -209,10 +210,10 @@
             // DISPLACEMENT LOGIC
             // We move the vertex along its normal based on how bright the pixel is.
             // Brighter (snow) = Higher. Darker (trees) = Lower.
-            vec3 newPosition = position + normal * brightness * 4.0; 
+            vec3 newPosition = position + normal * brightness * 5.0; 
             
             // Add a subtle "breathing" motion to the mountain
-            newPosition.z += sin(uTime * 0.5 + position.x * 2.0) * 0.2;
+            newPosition.z += sin(uTime * 0.5 + position.x * 2.0) * 0.1;
             
             // Mouse parallax tilt
             newPosition.x += (uMouse.x * 2.0 - 1.0) * 1.0 * brightness;
@@ -226,52 +227,54 @@
     <script id="fragmentShader" type="x-shader/x-fragment">
         uniform sampler2D uTexture;
         uniform float uTime;
+        uniform float uScroll;
         
         varying vec2 vUv;
         varying float vElevation;
 
         void main() {
             vec4 texColor = texture2D(uTexture, vUv);
-            
-            // WIREFRAME SCANNER LOGIC
-            // Create a moving line that goes up and down
-            float scanY = 0.5 + sin(uTime * 0.2) * 0.6; 
-            
-            // Logic to determine if we are in "Wireframe Mode" (below the scanner)
-            // or "Reality Mode" (above the scanner)
-            float scanWidth = 0.1;
-            float isWireframe = smoothstep(scanY + scanWidth, scanY, vUv.y);
+            float brightness = (texColor.r + texColor.g + texColor.b) / 3.0;
+
+            // --- SKY REMOVAL LOGIC ---
+            // The sky is usually bright and in the upper half of the UV.
+            // Adjust threshold as needed for the specific Flatirons image.
+            float skyThreshold = 0.55; 
+            if (vUv.y > 0.4 && brightness > skyThreshold) {
+                discard;
+            }
+
+            // --- SCROLL TRANSITION ---
+            // Transition from full color to wireframe based on scroll progress (uScroll 0 to 1)
+            // As uScroll increases, the wireframe "rises" from the bottom.
+            float scanY = uScroll * 1.2; // Overshoot slightly for full coverage
+            float isWireframe = smoothstep(scanY - 0.2, scanY, vUv.y);
             
             // Generate a grid pattern for the wireframe look
-            float gridScale = 50.0;
-            float lineThickness = 0.05;
+            float gridScale = 60.0;
+            float lineThickness = 0.04;
             vec2 grid = fract(vUv * gridScale);
             float lines = step(lineThickness, grid.x) * step(lineThickness, grid.y);
-            // Invert to get lines
             lines = 1.0 - lines; 
             
             // --- COLOR MIXING ---
             vec3 finalColor;
             
-            // The "Reality" color (The Photo)
+            // Reality Color
             vec3 realColor = texColor.rgb;
             
-            // The "Wireframe" color (Dark grey bg + White lines)
-            vec3 wireColor = vec3(0.1, 0.1, 0.1) + vec3(lines * 0.8);
+            // Wireframe Color (Dark grey bg + White lines)
+            vec3 wireColor = vec3(0.05) + vec3(lines * 0.5);
             
-            // Mix them based on the scan line position
-            finalColor = mix(realColor, wireColor, isWireframe);
+            // Mix based on scroll
+            finalColor = mix(wireColor, realColor, isWireframe);
             
-            // Add a "Scanner Bar" highlight
-            float bar = 1.0 - smoothstep(0.0, 0.02, abs(vUv.y - scanY));
-            finalColor += vec3(1.0, 0.3, 0.0) * bar; // Orange scanner line
-
-            // Depth/Atmosphere
-            // Fade to black at the bottom edges
-            float edge = 1.0 - vUv.y;
-            // finalColor *= smoothstep(0.0, 0.2, vUv.y);
-
-            gl_FragColor = vec4(finalColor, 1.0);
+            // Subtle edge fade for the mountains
+            float edgeFade = smoothstep(0.0, 0.1, vUv.y) * 
+                             smoothstep(0.0, 0.1, vUv.x) * 
+                             smoothstep(1.0, 0.9, vUv.x);
+            
+            gl_FragColor = vec4(finalColor * edgeFade, 1.0);
         }
     </script>
 
@@ -361,10 +364,12 @@
                 fragmentShader: document.getElementById('fragmentShader').textContent,
                 uniforms: {
                     uTime: { value: 0 },
+                    uScroll: { value: 0 },
                     uTexture: { value: texture },
                     uMouse: { value: mouse }
                 },
-                side: THREE.DoubleSide
+                side: THREE.DoubleSide,
+                transparent: true
             });
 
             const plane = new THREE.Mesh(geometry, material);
@@ -378,11 +383,17 @@
                 material.uniforms.uTime.value = time;
                 material.uniforms.uMouse.value.lerp(mouse, 0.05); // Smooth mouse
 
+                // Update scroll uniform based on Lenis scroll position
+                // Normalize scroll: 0 at top, 1 when hero is scrolled out
+                const scrollProgress = Math.min(lenis.scroll / window.innerHeight, 1.0);
+                // uScroll increases from 0.0 to 1.0 as we scroll down
+                material.uniforms.uScroll.value = scrollProgress;
+
                 // Subtle rotation of the whole plane
                 plane.rotation.z = Math.sin(time * 0.1) * 0.02;
 
-                // Animate Birds
-                animateBirds(time);
+                // Animate Beads
+                animateBeads(time);
                 // Animate Snow
                 animateSnow();
 
@@ -393,44 +404,49 @@
         }
 
         // --------------------------------------------------------
-        // BIRDS (Simple Geometry)
+        // BEADS OF LIGHT (Orbital System)
         // --------------------------------------------------------
-        const birds = [];
-        const birdGeo = new THREE.BufferGeometry();
-        // V-shape vertices
-        const birdVerts = new Float32Array([
-            0.2, 0, 0,
-            -0.2, 0, 0,
-            0, 0, 0.2
-        ]);
-        birdGeo.setAttribute('position', new THREE.BufferAttribute(birdVerts, 3));
-        const birdMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+        const beads = [];
+        const beadGeo = new THREE.SphereGeometry(0.1, 16, 16);
 
-        for (let i = 0; i < 15; i++) {
-            const bird = new THREE.Mesh(birdGeo, birdMat);
-            bird.userData = {
-                speed: 0.05 + Math.random() * 0.05,
-                center: new THREE.Vector3((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 5, 2),
-                radius: 2 + Math.random() * 3,
-                angle: Math.random() * Math.PI * 2
-            };
-            scene.add(bird);
-            birds.push(bird);
+        for (let i = 0; i < 12; i++) {
+            const beadMat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color().setHSL(0.1 + Math.random() * 0.1, 1, 0.7), // Warm glowy colors
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const bead = new THREE.Mesh(beadGeo, beadMat);
+
+            // Create a parent group to act as the "orbit plane"
+            const orbitPlane = new THREE.Group();
+            orbitPlane.rotation.x = Math.random() * Math.PI;
+            orbitPlane.rotation.z = Math.random() * Math.PI;
+            scene.add(orbitPlane);
+
+            orbitPlane.add(bead);
+
+            // Random large radius (20 to 50) to pass outside screen
+            const radius = 20 + Math.random() * 30;
+            bead.position.x = radius;
+
+            beads.push({
+                mesh: bead,
+                plane: orbitPlane,
+                speed: 0.002 + Math.random() * 0.005,
+                pulseOffset: Math.random() * Math.PI * 2
+            });
         }
 
-        function animateBirds(time) {
-            birds.forEach(bird => {
-                const ud = bird.userData;
-                ud.angle += ud.speed;
+        function animateBeads(time) {
+            beads.forEach(b => {
+                // Rotate the entire plane
+                b.plane.rotation.y += b.speed;
 
-                // Circular motion around a center point
-                bird.position.x = ud.center.x + Math.cos(ud.angle) * ud.radius;
-                bird.position.y = ud.center.y + Math.sin(ud.angle * 0.5) * 1; // Slight up/down
-                bird.position.z = ud.center.z + Math.sin(ud.angle) * ud.radius * 0.5;
-
-                // Rotation to face direction roughly
-                bird.rotation.y = -ud.angle;
-                bird.rotation.z = Math.sin(time * 10) * 0.2; // Flap
+                // Pulsing effect
+                const pulse = Math.sin(time * 2 + b.pulseOffset) * 0.5 + 1.0;
+                b.mesh.scale.set(pulse, pulse, pulse);
+                b.mesh.material.opacity = 0.5 + pulse * 0.5;
             });
         }
 
