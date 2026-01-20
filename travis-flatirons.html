@@ -215,9 +215,9 @@
             // Add a subtle "breathing" motion to the mountain
             newPosition.z += sin(uTime * 0.5 + position.x * 2.0) * 0.1;
             
-            // Mouse parallax tilt
-            newPosition.x += (uMouse.x * 2.0 - 1.0) * 1.0 * brightness;
-            newPosition.y += (uMouse.y * 2.0 - 1.0) * 1.0 * brightness;
+            // Mouse parallax tilt (Reduced Y intensity to prevent black reveal)
+            newPosition.x += (uMouse.x * 2.0 - 1.0) * 0.8 * brightness;
+            newPosition.y += (uMouse.y * 2.0 - 1.0) * 0.4 * brightness;
 
             gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
             vNormal = normal;
@@ -231,50 +231,38 @@
         
         varying vec2 vUv;
         varying float vElevation;
+        varying vec3 vNormal;
 
         void main() {
             vec4 texColor = texture2D(uTexture, vUv);
             float brightness = (texColor.r + texColor.g + texColor.b) / 3.0;
 
-            // --- SKY REMOVAL LOGIC ---
-            // The sky is usually bright and in the upper half of the UV.
-            // Adjust threshold as needed for the specific Flatirons image.
+            // --- SKY REMOVAL (SMOOTH MASK) ---
             float skyThreshold = 0.55; 
-            if (vUv.y > 0.4 && brightness > skyThreshold) {
-                discard;
-            }
+            float skyMask = 1.0 - (smoothstep(0.35, 0.45, vUv.y) * smoothstep(skyThreshold - 0.05, skyThreshold + 0.05, brightness));
 
             // --- SCROLL TRANSITION ---
-            // Transition from full color to wireframe based on scroll progress (uScroll 0 to 1)
-            // As uScroll increases, the wireframe "rises" from the bottom.
-            float scanY = uScroll * 1.2; // Overshoot slightly for full coverage
+            float scanY = uScroll * 1.2;
             float isWireframe = smoothstep(scanY - 0.2, scanY, vUv.y);
             
-            // Generate a grid pattern for the wireframe look
+            // --- ANTIALIASED WIREFRAME ---
             float gridScale = 60.0;
-            float lineThickness = 0.04;
-            vec2 grid = fract(vUv * gridScale);
-            float lines = step(lineThickness, grid.x) * step(lineThickness, grid.y);
-            lines = 1.0 - lines; 
+            vec2 gUv = vUv * gridScale;
+            vec2 grid = abs(fract(gUv - 0.5) - 0.5) / fwidth(gUv);
+            float lineFactor = 1.0 - min(min(grid.x, grid.y), 1.0);
             
             // --- COLOR MIXING ---
-            vec3 finalColor;
-            
-            // Reality Color
             vec3 realColor = texColor.rgb;
+            vec3 wireColor = vec3(0.05) + vec3(lineFactor * 0.45);
             
-            // Wireframe Color (Dark grey bg + White lines)
-            vec3 wireColor = vec3(0.05) + vec3(lines * 0.5);
+            vec3 finalColor = mix(wireColor, realColor, isWireframe);
             
-            // Mix based on scroll
-            finalColor = mix(wireColor, realColor, isWireframe);
-            
-            // Subtle edge fade for the mountains
+            // Subtle edge fade
             float edgeFade = smoothstep(0.0, 0.1, vUv.y) * 
                              smoothstep(0.0, 0.1, vUv.x) * 
                              smoothstep(1.0, 0.9, vUv.x);
             
-            gl_FragColor = vec4(finalColor * edgeFade, 1.0);
+            gl_FragColor = vec4(finalColor * edgeFade, skyMask);
         }
     </script>
 
@@ -355,13 +343,13 @@
         );
 
         function initScene(texture) {
-            // Create Geometry (High segment count for displacement details)
-            // 20 width, 12 height, 128 segments
-            const geometry = new THREE.PlaneGeometry(20, 12, 256, 256);
+            // Create Geometry (Increased segment count for smoother zoom)
+            const geometry = new THREE.PlaneGeometry(20, 12, 320, 320);
 
             const material = new THREE.ShaderMaterial({
                 vertexShader: document.getElementById('vertexShader').textContent,
                 fragmentShader: document.getElementById('fragmentShader').textContent,
+                extensions: { derivatives: true }, // Required for fwidth
                 uniforms: {
                     uTime: { value: 0 },
                     uScroll: { value: 0 },
@@ -373,6 +361,7 @@
             });
 
             const plane = new THREE.Mesh(geometry, material);
+            plane.rotation.x = -Math.PI / 8; // Tilt mountain 22.5° towards camera
             scene.add(plane);
 
             // Animate
@@ -388,6 +377,13 @@
                 const scrollProgress = Math.min(lenis.scroll / window.innerHeight, 1.0);
                 // uScroll increases from 0.0 to 1.0 as we scroll down
                 material.uniforms.uScroll.value = scrollProgress;
+
+                // --- NEW: Scroll Zoom Effect ---
+                // Move camera from z=10 to z=4 as we scroll
+                camera.position.z = 10 - (scrollProgress * 6);
+                // Subtle perspective shift (Adjusted for tilted plane)
+                camera.position.y = 1.0 + (scrollProgress * 1.5);
+                camera.lookAt(0, 0, 0);
 
                 // Subtle rotation of the whole plane
                 plane.rotation.z = Math.sin(time * 0.1) * 0.02;
