@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-jetski-tab-id="1462549709" class="lenis lenis-smooth">
 
 <head>
     <meta charset="UTF-8">
@@ -7,9 +6,9 @@
     <title>Travis Hinton | Digital Architect</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
     <link
-        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;500;800&family=Space+Mono:ital,wght@0,400;1,400&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@300;500;800&amp;family=Space+Mono:ital,wght@0,400;1,400&amp;display=swap"
         rel="stylesheet">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -54,8 +53,8 @@
             text-align: center;
             z-index: 5;
             position: relative;
-            padding-bottom: 40vh;
-            /* Further shift content up */
+            padding-bottom: 30vh;
+            /* Shift content further up */
             /* Gradient to make text readable over complex image */
             background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.4) 100%);
         }
@@ -66,9 +65,9 @@
             line-height: 0.8;
             margin: 0;
             text-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-            /* Hide the DOM H1 since we're using a 3D version now */
+            /* mix-blend-mode: overlay; */
             opacity: 0;
-            pointer-events: none;
+            /* Hidden as it's now rendered in Three.js */
         }
 
         .role {
@@ -136,18 +135,23 @@
             }
         }
     </style>
+    <style id="antigravity-scroll-lock-style">
+        html:root body.antigravity-scroll-lock {
+            overflow: hidden !important;
+        }
+    </style>
 </head>
 
-<body>
+<body class="">
 
-    <div class="loading-screen">INITIALIZING TERRAIN DATA...</div>
+
 
     <div id="canvas-container"></div>
 
     <main>
         <section class="hero">
             <h1>Travis<br>Hinton</h1>
-            <div class="role">Front-End Architecture & Design</div>
+            <div class="role">Front-End Architecture &amp; Design</div>
         </section>
 
         <section class="content">
@@ -216,9 +220,10 @@
             vElevation = brightness;
             
             // DISPLACEMENT LOGIC
-            // We move the vertex along its normal based on how bright the pixel is.
-            // Brighter (snow) = Higher. Darker (trees) = Lower.
-            vec3 newPosition = position + normal * brightness * 2.5; 
+            // On load (uScroll=0), we start with a very subtle displacement (0.0)
+            // and reach the full rocky state (3.5) as the user scrolls.
+            float displacementScale = mix(0.0, 3.5, uScroll);
+            vec3 newPosition = position + normal * brightness * displacementScale; 
             
             // Add a subtle "breathing" motion to the mountain
             newPosition.z += sin(uTime * 0.5 + position.x * 2.0) * 0.1;
@@ -374,28 +379,48 @@
                 transparent: true
             });
 
-            // --- NEW: 3D NAME SETUP ---
-            const nameTexture = createTextTexture("Travis\nHinton", {
-                font: '800 240px "Instrument Serif", serif',
-                color: '#ffffff',
-                lineHeight: 200
-            });
-            const nameGeo = new THREE.PlaneGeometry(16, 12);
-            const nameMat = new THREE.MeshBasicMaterial({
-                map: nameTexture,
-                transparent: true,
-                depthWrite: false, // Ensure it doesn't clip snowflakes weirdly
-            });
-            const nameMesh = new THREE.Mesh(nameGeo, nameMat);
-            // Height adjustment to match the DOM layout
-            nameMesh.position.y = 1.0;
-            nameMesh.position.z = 4.0; // Start well in front of the mountain (which is at z:0/displacement)
-            scene.add(nameMesh);
-
             const plane = new THREE.Mesh(geometry, material);
-            plane.position.y = -3.0; // Lower the mountain
             plane.rotation.x = -Math.PI / 8; // Tilt mountain 22.5° towards camera
             scene.add(plane);
+
+            // --- 3D NAME SETUP ---
+            const nameCanvas = document.createElement('canvas');
+            const nameCtx = nameCanvas.getContext('2d');
+            nameCanvas.width = 1024;
+            nameCanvas.height = 512;
+
+            // Wait for font or just set it
+            nameCtx.fillStyle = 'white';
+            nameCtx.font = '800 160px "Instrument Serif", serif';
+            nameCtx.textAlign = 'center';
+            nameCtx.textBaseline = 'middle';
+
+            // Draw "Travis" and "Hinton"
+            nameCtx.fillText('TRAVIS', 512, 180);
+            nameCtx.fillText('HINTON', 512, 340);
+
+            const nameTexture = new THREE.CanvasTexture(nameCanvas);
+            const nameMaterial = new THREE.MeshBasicMaterial({
+                map: nameTexture,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+            const nameGeometry = new THREE.PlaneGeometry(8, 4);
+            const nameMesh = new THREE.Mesh(nameGeometry, nameMaterial);
+
+            // Initial Position: Fully in front of mountain peaks (which reach z=3.5)
+            nameMesh.position.set(0, 3, 5);
+            scene.add(nameMesh);
+
+            // Redraw when fonts are loaded for sharpness
+            if (document.fonts) {
+                document.fonts.ready.then(() => {
+                    nameCtx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
+                    nameCtx.fillText('TRAVIS', 512, 180);
+                    nameCtx.fillText('HINTON', 512, 340);
+                    nameTexture.needsUpdate = true;
+                });
+            }
 
             // Animate
             const clock = new THREE.Clock();
@@ -407,9 +432,22 @@
 
                 // Update scroll uniform based on Lenis scroll position
                 // Normalize scroll: 0 at top, 1 when hero is scrolled out
-                const scrollProgress = Math.min(lenis.scroll / window.innerHeight, 1.0);
-                // uScroll increases from 0.0 to 1.0 as we scroll down
-                material.uniforms.uScroll.value = scrollProgress;
+                // Using a slight lerp for the uniform itself for extra silkiness
+                const targetScroll = Math.min(lenis.scroll / window.innerHeight, 1.0);
+                material.uniforms.uScroll.value += (targetScroll - material.uniforms.uScroll.value) * 0.1;
+                const scrollProgress = material.uniforms.uScroll.value;
+
+                // --- 3D NAME SCROLL EFFECT ---
+                // Name moves "away" from screen and gets hidden by mountains
+                // Starting Z is 5 (in front), ends at -10 (behind mountain plane)
+                nameMesh.position.z = 5 - (scrollProgress * 18);
+                // Slightly move down as it goes back
+                nameMesh.position.y = 3 - (scrollProgress * 3);
+                // Scale down slightly to emphasize depth
+                const nameScale = 1.0 - (scrollProgress * 0.6);
+                nameMesh.scale.set(nameScale, nameScale, nameScale);
+                // Fade out as it moves back
+                nameMesh.material.opacity = 1.0 - (scrollProgress * 0.85);
 
                 // --- NEW: Scroll Zoom Effect ---
                 // Move camera from z=10 to z=4 as we scroll
@@ -418,13 +456,8 @@
                 camera.position.y = 1.0 + (scrollProgress * 1.5);
                 camera.lookAt(0, 0, 0);
 
-                // --- NEW: Name Depth Animation ---
-                // Name starts at z:4 (front) and moves to z:-10 (way behind mountain)
-                nameMesh.position.z = 4.0 - (scrollProgress * 14.0);
-                // Also scale slightly down and fade to give perspective depth
-                const nameScale = 1.0 - (scrollProgress * 0.3);
-                nameMesh.scale.set(nameScale, nameScale, 1);
-                nameMesh.material.opacity = 1.0 - (scrollProgress * 0.8);
+                // Subtle rotation of the whole plane
+                plane.rotation.z = Math.sin(time * 0.1) * 0.02;
 
                 // Animate Beads
                 animateBeads(time);
@@ -534,42 +567,6 @@
         }
 
         // --------------------------------------------------------
-        // TEXT TEXTURE GENERATOR
-        // --------------------------------------------------------
-        function createTextTexture(text, options) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-
-            // Large canvas for clarity
-            canvas.width = 2048;
-            canvas.height = 1536;
-
-            // ctx.fillStyle = 'red'; // Debugging
-            // ctx.fillRect(0,0,canvas.width, canvas.height);
-
-            ctx.font = options.font;
-            ctx.fillStyle = options.color;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            // Handle multiline
-            const lines = text.split('\n');
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const lineHeight = options.lineHeight || 120;
-
-            lines.forEach((line, i) => {
-                const y = centerY + (i - (lines.length - 1) / 2) * lineHeight;
-                ctx.fillText(line, centerX, y);
-            });
-
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.minFilter = THREE.LinearFilter;
-            texture.magFilter = THREE.LinearFilter;
-            return texture;
-        }
-
-        // --------------------------------------------------------
         // RESIZE HANDLER
         // --------------------------------------------------------
         window.addEventListener('resize', () => {
@@ -588,6 +585,11 @@
         }
         requestAnimationFrame(raf);
     </script>
+
+
+    <div id="preact-border-shadow-host" popover="manual"
+        style="border: none; padding: 0px; margin: 0px; inset: 0px; position: fixed; width: 100vw; height: 100vh; background: transparent; pointer-events: none;">
+    </div>
 </body>
 
 </html>
