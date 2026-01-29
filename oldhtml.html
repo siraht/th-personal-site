@@ -458,7 +458,7 @@
             function animate() {
                 const time = clock.getElapsedTime();
                 material.uniforms.uTime.value = time;
-                material.uniforms.uMouse.value.lerp(mouse, 0.05); // Smooth mouse
+                material.uniforms.uMouse.value.lerp(mouse, 0.015); // Increased lag for satisfying inertia
 
                 // Update scroll uniform based on Lenis scroll position
                 // Normalize scroll: 0 at top, 1 when hero is scrolled ~40% out
