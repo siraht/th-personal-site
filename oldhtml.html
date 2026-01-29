@@ -1,4 +1,5 @@
-<html lang="en" data-jetski-tab-id="1462549709" class="lenis lenis-smooth">
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -27,7 +28,28 @@
             background-color: #050505;
             color: var(--text);
             font-family: 'Inter', sans-serif;
-            overflow-x: hidden;
+            /* Remove overflow-x: hidden to let Lenis handle the viewport */
+        }
+
+        /* Lenis Recommended CSS */
+        html.lenis {
+            height: auto;
+        }
+
+        .lenis.lenis-smooth {
+            scroll-behavior: auto;
+        }
+
+        .lenis.lenis-smooth [data-lenis-prevent] {
+            overscroll-behavior: contain;
+        }
+
+        .lenis.lenis-stopped {
+            overflow: hidden;
+        }
+
+        .lenis.lenis-scrolling iframe {
+            pointer-events: none;
         }
 
         #canvas-container {
@@ -250,10 +272,6 @@
             vec4 texColor = texture2D(uTexture, vUv);
             float brightness = (texColor.r + texColor.g + texColor.b) / 3.0;
 
-            // --- SKY REMOVAL (SMOOTH MASK) ---
-            float skyThreshold = 0.55; 
-            float skyMask = 1.0 - (smoothstep(0.35, 0.45, vUv.y) * smoothstep(skyThreshold - 0.05, skyThreshold + 0.05, brightness));
-
             // --- SCROLL TRANSITION ---
             float scanY = uScroll * 1.2;
             float isWireframe = smoothstep(scanY - 0.2, scanY, vUv.y);
@@ -266,16 +284,16 @@
             
             // --- COLOR MIXING ---
             vec3 realColor = texColor.rgb;
+            
             // Wireframe lines should be bright, body should be dark/transparent
             vec3 wireColor = vec3(lineFactor * 0.6); 
             
             vec3 finalColor = mix(wireColor, realColor, isWireframe);
             
             // --- ALPHA INTEGRATION ---
-            // For the wireframe section, we want the peaks to "poke through"
-            // but the body to be transparent enough to read text underneath.
-            float wireAlpha = (lineFactor * 0.7) + 0.1; // Body is 10% opaque, lines are 70%
-            float alpha = mix(wireAlpha, 1.0, isWireframe) * skyMask;
+            // Use the image's inherent alpha channel
+            float wireAlpha = (lineFactor * 0.7) + 0.1; 
+            float alpha = mix(wireAlpha, 1.0, isWireframe) * texColor.a;
             
             // Subtle edge fade
             float edgeFade = smoothstep(0.0, 0.1, vUv.y) * 
@@ -292,7 +310,7 @@
         // --------------------------------------------------------
         // REPLACE THIS URL WITH YOUR FLATIRONS IMAGE URL
         // It works best with a high-contrast image (Snow = Bright, Trees = Dark)
-        const IMAGE_URL = 'Flatirons_Winter_Sunrise_edit_2.jpg';
+        const IMAGE_URL = 'flatirons_nobg.png';
         // --------------------------------------------------------
 
         const canvasContainer = document.getElementById('canvas-container');
@@ -383,44 +401,56 @@
             plane.rotation.x = -Math.PI / 8; // Tilt mountain 22.5° towards camera
             scene.add(plane);
 
-            // --- 3D NAME SETUP ---
-            const nameCanvas = document.createElement('canvas');
-            const nameCtx = nameCanvas.getContext('2d');
-            nameCanvas.width = 1024;
-            nameCanvas.height = 512;
+            // --- 3D NAME SETUP (EXTRUDED) ---
+            const fontLoader = new THREE.FontLoader();
+            let nameGroup = new THREE.Group(); // Use a group to hold both lines
+            scene.add(nameGroup);
 
-            // Wait for font or just set it
-            nameCtx.fillStyle = 'white';
-            nameCtx.font = '800 160px "Instrument Serif", serif';
-            nameCtx.textAlign = 'center';
-            nameCtx.textBaseline = 'middle';
+            // Initial Position: Just above center
+            // Start at Z=1.0 for collision, Y=1.2
+            nameGroup.position.set(0, 1.2, 1.0);
 
-            // Draw "Travis" and "Hinton"
-            nameCtx.fillText('TRAVIS', 512, 180);
-            nameCtx.fillText('HINTON', 512, 340);
-
-            const nameTexture = new THREE.CanvasTexture(nameCanvas);
-            const nameMaterial = new THREE.MeshBasicMaterial({
-                map: nameTexture,
-                transparent: true,
-                side: THREE.DoubleSide
-            });
-            const nameGeometry = new THREE.PlaneGeometry(8, 4);
-            const nameMesh = new THREE.Mesh(nameGeometry, nameMaterial);
-
-            // Initial Position: Fully in front of mountain peaks (which reach z=3.5)
-            nameMesh.position.set(0, 3, 5);
-            scene.add(nameMesh);
-
-            // Redraw when fonts are loaded for sharpness
-            if (document.fonts) {
-                document.fonts.ready.then(() => {
-                    nameCtx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
-                    nameCtx.fillText('TRAVIS', 512, 180);
-                    nameCtx.fillText('HINTON', 512, 340);
-                    nameTexture.needsUpdate = true;
+            fontLoader.load('https://threejs.org/examples/fonts/droid/droid_serif_regular.typeface.json', (font) => {
+                const textMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 1.0
                 });
-            }
+
+                // Create "TRAVIS"
+                const travisGeo = new THREE.TextGeometry('TRAVIS', {
+                    font: font,
+                    size: 0.8,      // Scale to fit
+                    height: 0.4,    // Thickness (Depth)
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.02,
+                    bevelSize: 0.01,
+                    bevelOffset: 0,
+                    bevelSegments: 3
+                });
+                travisGeo.center(); // Center geometry
+                const travisMesh = new THREE.Mesh(travisGeo, textMaterial);
+                travisMesh.position.y = 0.5; // Top line
+                nameGroup.add(travisMesh);
+
+                // Create "HINTON"
+                const hintonGeo = new THREE.TextGeometry('HINTON', {
+                    font: font,
+                    size: 0.8,
+                    height: 0.4,
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.02,
+                    bevelSize: 0.01,
+                    bevelOffset: 0,
+                    bevelSegments: 3
+                });
+                hintonGeo.center();
+                const hintonMesh = new THREE.Mesh(hintonGeo, textMaterial);
+                hintonMesh.position.y = -0.5; // Bottom line
+                nameGroup.add(hintonMesh);
+            });
 
             // Animate
             const clock = new THREE.Clock();
@@ -431,23 +461,26 @@
                 material.uniforms.uMouse.value.lerp(mouse, 0.05); // Smooth mouse
 
                 // Update scroll uniform based on Lenis scroll position
-                // Normalize scroll: 0 at top, 1 when hero is scrolled out
-                // Using a slight lerp for the uniform itself for extra silkiness
-                const targetScroll = Math.min(lenis.scroll / window.innerHeight, 1.0);
+                // Normalize scroll: 0 at top, 1 when hero is scrolled ~40% out
+                const targetScroll = Math.min(lenis.scroll / (window.innerHeight * 0.4), 1.0);
                 material.uniforms.uScroll.value += (targetScroll - material.uniforms.uScroll.value) * 0.1;
                 const scrollProgress = material.uniforms.uScroll.value;
 
-                // --- 3D NAME SCROLL EFFECT ---
-                // Name moves "away" from screen and gets hidden by mountains
-                // Starting Z is 5 (in front), ends at -10 (behind mountain plane)
-                nameMesh.position.z = 5 - (scrollProgress * 18);
-                // Slightly move down as it goes back
-                nameMesh.position.y = 3 - (scrollProgress * 3);
+                // Name moves "away" from screen SLOWLY
+                // Starting Z is 1.0 (already deep in scene), ends at -4.0
+                // This ensures immediate collision as mountains rise
+                nameGroup.position.z = 1.0 - (scrollProgress * 5.0);
+
+                // Slightly move down as it goes back (Relative to new y=1.2)
+                nameGroup.position.y = 1.2 - (scrollProgress * 1.5);
                 // Scale down slightly to emphasize depth
-                const nameScale = 1.0 - (scrollProgress * 0.6);
-                nameMesh.scale.set(nameScale, nameScale, nameScale);
-                // Fade out as it moves back
-                nameMesh.material.opacity = 1.0 - (scrollProgress * 0.85);
+                const nameScale = 1.0 - (scrollProgress * 0.3);
+                nameGroup.scale.set(nameScale, nameScale, nameScale);
+
+                // Fade out children as it moves back
+                nameGroup.children.forEach(child => {
+                    if (child.material) child.material.opacity = 1.0 - (scrollProgress * 0.85);
+                });
 
                 // --- NEW: Scroll Zoom Effect ---
                 // Move camera from z=10 to z=4 as we scroll
@@ -576,9 +609,20 @@
         });
 
         // --------------------------------------------------------
-        // SMOOTH SCROLL UI
+        // SMOOTH SCROLL UI (LENIS)
         // --------------------------------------------------------
-        const lenis = new Lenis();
+        const lenis = new Lenis({
+            duration: 1.2,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            orientation: 'vertical',
+            gestureOrientation: 'vertical',
+            smoothWheel: true,
+            wheelMultiplier: 1,
+            smoothTouch: false,
+            touchMultiplier: 2,
+            infinite: false,
+        });
+
         function raf(time) {
             lenis.raf(time);
             requestAnimationFrame(raf);
