@@ -3,9 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="robots" content="noindex, nofollow" />
+  <meta name="robots" content="index, follow" />
+  <meta name="description" content="Travis Hinton's personal website is being rebuilt." />
   <meta name="theme-color" content="#000000" />
-  <title>Rebuild in Progress</title>
+  <link rel="canonical" href="https://travishinton.us/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Travis Hinton" />
+  <meta property="og:description" content="Travis Hinton's personal website is being rebuilt." />
+  <meta property="og:url" content="https://travishinton.us/" />
+  <meta property="og:site_name" content="Travis Hinton" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Travis Hinton" />
+  <meta name="twitter:description" content="Travis Hinton's personal website is being rebuilt." />
+  <title>Travis Hinton</title>
   <style>
     :root {
       color-scheme: dark;
@@ -95,7 +105,23 @@
       user-select: none;
     }
 
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     h1 {
+      margin: 0;
+    }
+
+    .status-title {
       margin: 0;
       font-size: clamp(0.72rem, 1.5vw, 0.9rem);
       font-weight: 650;
@@ -161,7 +187,8 @@
       </div>
 
       <div class="copy">
-        <h1 id="maintenance-title">Rebuild in Progress</h1>
+        <h1 id="maintenance-title" class="visually-hidden">Travis Hinton</h1>
+        <p class="status-title">Rebuild in Progress</p>
         <div class="status-line" aria-hidden="true"></div>
       </div>
     </section>
