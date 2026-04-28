@@ -1,0 +1,1247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#000000" />
+  <title>Vesica Navigation Prototype Matrix</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #000;
+      --fg: #fff;
+      --muted: rgba(255, 255, 255, 0.62);
+      --faint: rgba(255, 255, 255, 0.18);
+      --ghost: rgba(255, 255, 255, 0.08);
+      --panel: rgba(0, 0, 0, 0.72);
+      --cell: 32px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      overflow: hidden;
+      font-family:
+        "IBM Plex Mono",
+        "Berkeley Mono",
+        "SFMono-Regular",
+        Consolas,
+        monospace;
+    }
+
+    body {
+      min-height: 100svh;
+    }
+
+    button,
+    a {
+      font: inherit;
+    }
+
+    .ambient-grid {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.12;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+      background-size: var(--cell) var(--cell);
+      mask-image: radial-gradient(circle at center, #000 0%, transparent 74%);
+    }
+
+    .prototype {
+      position: relative;
+      min-height: 100svh;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .stage {
+      position: absolute;
+      inset: 0;
+    }
+
+    .content {
+      position: absolute;
+      left: 50%;
+      top: 43%;
+      z-index: 2;
+      display: grid;
+      justify-items: center;
+      gap: clamp(18px, 4vmin, 34px);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .mark-wrap {
+      width: min(62vw, 340px);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .copy {
+      display: grid;
+      justify-items: center;
+      gap: 10px;
+      text-align: center;
+      user-select: none;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(0.68rem, 1.35vw, 0.86rem);
+      font-weight: 650;
+      line-height: 1.1;
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+    }
+
+    .status-line {
+      width: min(224px, 54vw);
+      height: 8px;
+      margin-top: 2px;
+    }
+
+    .nav-field {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .nav-node {
+      --x: 50vw;
+      --y: 50vh;
+      --size: 92px;
+      --delay: 0s;
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      width: var(--size);
+      height: var(--size);
+      display: grid;
+      place-items: center;
+      color: var(--fg);
+      text-decoration: none;
+      transform: translate(-50%, -50%) scale(var(--node-scale, 1));
+      transform-origin: center;
+      pointer-events: auto;
+      outline: none;
+      transition:
+        transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        filter 260ms ease;
+      animation: drift 6.8s ease-in-out infinite;
+      animation-delay: var(--delay);
+    }
+
+    .nav-node:hover,
+    .nav-node:focus-visible {
+      --node-scale: 1.16;
+      filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.28));
+      z-index: 8;
+    }
+
+    .nav-node canvas {
+      position: absolute;
+      inset: 0;
+    }
+
+    .nav-label {
+      position: absolute;
+      display: block;
+      max-width: min(210px, 42vw);
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 0.62rem;
+      font-weight: 650;
+      line-height: 1.25;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-align: center;
+      text-wrap: balance;
+      opacity: var(--label-opacity, 0);
+      transform: translate(var(--label-x, 0), var(--label-y, 58px));
+      transition:
+        opacity 220ms ease,
+        transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      pointer-events: none;
+      text-shadow: 0 0 18px #000;
+    }
+
+    .nav-node:hover .nav-label,
+    .nav-node:focus-visible .nav-label {
+      --label-opacity: 1;
+      --label-y: 64px;
+    }
+
+    .nav-node::before,
+    .nav-node::after {
+      position: absolute;
+      inset: 18%;
+      content: "";
+      opacity: 0;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition:
+        opacity 240ms ease,
+        transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      pointer-events: none;
+    }
+
+    .nav-node:hover::before,
+    .nav-node:focus-visible::before,
+    .nav-node:hover::after,
+    .nav-node:focus-visible::after {
+      opacity: 1;
+    }
+
+    [data-interaction="0"] .nav-node:hover::before,
+    [data-interaction="0"] .nav-node:focus-visible::before {
+      transform: scale(1.35);
+    }
+
+    [data-interaction="1"] .nav-node::before {
+      border-radius: 50%;
+    }
+
+    [data-interaction="1"] .nav-node:hover::before,
+    [data-interaction="1"] .nav-node:focus-visible::before {
+      transform: scale(1.55);
+    }
+
+    [data-interaction="2"] .nav-node:hover,
+    [data-interaction="2"] .nav-node:focus-visible {
+      transform: translate(-50%, -50%) scale(1.1) rotate(5deg);
+    }
+
+    [data-interaction="3"] .nav-node::before,
+    [data-interaction="3"] .nav-node::after {
+      inset: 24%;
+      border-radius: 50%;
+    }
+
+    [data-interaction="3"] .nav-node:hover::before,
+    [data-interaction="3"] .nav-node:focus-visible::before {
+      transform: translateX(-22%) scale(1.18);
+    }
+
+    [data-interaction="3"] .nav-node:hover::after,
+    [data-interaction="3"] .nav-node:focus-visible::after {
+      transform: translateX(22%) scale(1.18);
+    }
+
+    [data-interaction="4"] .nav-node:hover,
+    [data-interaction="4"] .nav-node:focus-visible {
+      transform: translate(calc(-50% + var(--pull-x, 0px)), calc(-50% + var(--pull-y, 0px))) scale(1.12);
+    }
+
+    [data-interaction="5"] .nav-node:hover,
+    [data-interaction="5"] .nav-node:focus-visible {
+      transform: translate(-50%, -50%) scale(1.18) rotate(45deg);
+    }
+
+    [data-interaction="5"] .nav-node:hover .nav-label,
+    [data-interaction="5"] .nav-node:focus-visible .nav-label {
+      transform: rotate(-45deg) translate(var(--label-x, 0), var(--label-y, 64px));
+    }
+
+    [data-interaction="6"] .nav-node:hover,
+    [data-interaction="6"] .nav-node:focus-visible {
+      animation-duration: 1.8s;
+      filter: drop-shadow(0 0 22px rgba(255, 255, 255, 0.36));
+    }
+
+    [data-labels="0"] .nav-label {
+      --label-opacity: 0.72;
+      --label-y: 62px;
+    }
+
+    [data-labels="1"] .nav-label {
+      --label-y: 42px;
+      letter-spacing: 0.28em;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+
+    [data-labels="1"] .nav-node:hover .nav-label,
+    [data-labels="1"] .nav-node:focus-visible .nav-label {
+      --label-y: 48px;
+    }
+
+    [data-labels="2"] .nav-label {
+      inset: auto auto -14px 50%;
+      width: max-content;
+      padding: 4px 0 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.28);
+      transform: translate(-50%, 18px);
+    }
+
+    [data-labels="2"] .nav-node:hover .nav-label,
+    [data-labels="2"] .nav-node:focus-visible .nav-label {
+      transform: translate(-50%, 24px);
+    }
+
+    [data-labels="3"] .nav-label {
+      top: 50%;
+      left: 50%;
+      width: max-content;
+      transform: translate(-50%, -50%);
+      opacity: 0.5;
+      font-size: 0.56rem;
+    }
+
+    [data-labels="3"] .nav-node:hover .nav-label,
+    [data-labels="3"] .nav-node:focus-visible .nav-label {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.08);
+    }
+
+    [data-labels="4"] .nav-label {
+      left: 88%;
+      top: 50%;
+      width: max-content;
+      text-align: left;
+      transform: translate(10px, -50%);
+    }
+
+    [data-labels="4"] .nav-node:hover .nav-label,
+    [data-labels="4"] .nav-node:focus-visible .nav-label {
+      transform: translate(18px, -50%);
+    }
+
+    [data-labels="5"] .nav-label {
+      opacity: 0.78;
+      mix-blend-mode: difference;
+      transform: translate(var(--label-x, 0), var(--label-y, 66px));
+    }
+
+    [data-labels="6"] .nav-label {
+      width: 9ch;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: clip;
+      opacity: 0.72;
+    }
+
+    .controls {
+      position: fixed;
+      left: max(18px, env(safe-area-inset-left));
+      right: max(18px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 20;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+      pointer-events: none;
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .control-group {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+    }
+
+    .control-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.58rem;
+      line-height: 1;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+    }
+
+    .option-row {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .option {
+      min-width: 0;
+      height: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 0;
+      background: rgba(255, 255, 255, 0.035);
+      color: rgba(255, 255, 255, 0.72);
+      cursor: pointer;
+    }
+
+    .option[aria-pressed="true"] {
+      background: #fff;
+      color: #000;
+    }
+
+    .readout {
+      width: min(342px, 32vw);
+      padding: 14px 14px 13px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      pointer-events: auto;
+    }
+
+    .readout h2 {
+      margin: 0 0 9px;
+      font-size: 0.64rem;
+      line-height: 1.2;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+
+    .readout p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.62);
+      font-size: 0.68rem;
+      line-height: 1.55;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .quick-actions button {
+      flex: 1;
+      height: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: transparent;
+      color: rgba(255, 255, 255, 0.72);
+      cursor: pointer;
+    }
+
+    .ghost-line {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .ghost-line svg {
+      width: 100%;
+      height: 100%;
+      opacity: 0.22;
+    }
+
+    .ghost-line path,
+    .ghost-line circle,
+    .ghost-line line,
+    .ghost-line polyline {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.45);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+      stroke-dasharray: 1 10;
+    }
+
+    @keyframes drift {
+      0%,
+      100% {
+        margin-top: -2px;
+      }
+      50% {
+        margin-top: 3px;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .content {
+        top: 34%;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .control-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .readout {
+        width: auto;
+      }
+    }
+
+    @media (max-width: 560px) {
+      :root {
+        --cell: 28px;
+      }
+
+      .mark-wrap {
+        width: min(68vw, 250px);
+      }
+
+      .nav-node {
+        --size: 72px;
+      }
+
+      .controls {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+      }
+
+      .control-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .control-group {
+        padding: 8px;
+      }
+
+      .readout {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .nav-node {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-grid" aria-hidden="true"></div>
+
+  <main class="prototype" id="prototype" data-shape="0" data-layout="0" data-interaction="0" data-labels="0">
+    <div class="ghost-line" id="ghost-line" aria-hidden="true"></div>
+
+    <section class="content" aria-label="Site maintenance notice">
+      <div class="mark-wrap" aria-hidden="true">
+        <canvas id="vesica-canvas"></canvas>
+      </div>
+
+      <div class="copy">
+        <h1>Rebuild in Progress</h1>
+        <canvas class="status-line" id="status-canvas" aria-hidden="true"></canvas>
+      </div>
+    </section>
+
+    <nav class="nav-field" id="nav-field" aria-label="Prototype navigation"></nav>
+
+    <aside class="controls" aria-label="Prototype controls">
+      <div class="control-grid" id="control-grid"></div>
+
+      <section class="readout" aria-live="polite">
+        <h2 id="combo-title">Vesica Seeds / Corner Reliquary / Bloom</h2>
+        <p id="combo-copy">Six small construction marks occupy the black corners and edge margins, keeping the central vesica quiet while giving each unrelated destination its own charged point.</p>
+        <div class="quick-actions">
+          <button type="button" id="previous">Previous</button>
+          <button type="button" id="shuffle">Shuffle</button>
+          <button type="button" id="next">Next</button>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const links = [
+        { title: "Poetry", url: "https://poetry.travishinton.us" },
+        { title: "Web Design", url: "https://travishinton.us" },
+        { title: "Automation", url: "https://automation.travishinton.us" },
+        { title: "Systems", url: "https://systems.travishinton.us" },
+        { title: "Notebook", url: "https://notes.travishinton.us" },
+        { title: "Contact", url: "mailto:travis@travishinton.us" },
+      ];
+
+      const dimensions = [
+        {
+          key: "shape",
+          title: "Shape",
+          options: [
+            ["Vesica Seeds", "paired circles, small almond overlap, and construction-center pixels"],
+            ["Triangular Apertures", "equilateral outlines that feel like folded signal flags"],
+            ["Square Brackets", "right-angle pixel brackets and nested architectural frames"],
+            ["Hex Cells", "honeycomb geometry with radial symmetry and a technical edge"],
+            ["Rosette Lens", "four overlapping mandorlas arranged as a quiet compass"],
+            ["Diamond Lattice", "rhombus grids that echo pixels without becoming plain squares"],
+            ["Spiral Steps", "stepped arcs that imply orbit, growth, and route-finding"],
+          ],
+        },
+        {
+          key: "layout",
+          title: "Layout",
+          options: [
+            ["Corner Reliquary", "corners and side margins preserve the central black field"],
+            ["Orbital Halo", "destinations orbit the vesica like minor construction points"],
+            ["Diagonal Constellation", "a northwest-to-southeast path cuts across the page"],
+            ["Split Margins", "left and right rails frame the mark like an instrument panel"],
+            ["Cardinal Cross", "north, south, east, and west anchors make the page ceremonial"],
+            ["Golden Spiral", "nodes follow a tightening spiral toward the center"],
+            ["Horizon Belt", "a low navigation band leaves the mark floating above it"],
+          ],
+        },
+        {
+          key: "interaction",
+          title: "Motion",
+          options: [
+            ["Bloom", "hover expands the geometry as if a hidden construction layer appears"],
+            ["Radial Reveal", "a circular field grows outward from the active destination"],
+            ["Glitch Cant", "the object tilts and jitters slightly like a misaligned pixel scan"],
+            ["Circle Split", "paired rings separate to expose the implied vesica"],
+            ["Magnet Pull", "the glyph moves a few pixels toward the central mark"],
+            ["Lens Fold", "the node rotates into a diamond-like hinge state"],
+            ["Wave Scan", "the idle drift speeds up and brightens under the pointer"],
+          ],
+        },
+        {
+          key: "labels",
+          title: "Labels",
+          options: [
+            ["Always Faint", "labels remain present but subordinate to the geometry"],
+            ["Vertical Codes", "small upright labels turn the edges into map notation"],
+            ["Underline Tags", "labels sit on thin construction rules below each mark"],
+            ["Center Stamp", "short labels sit inside the shape like a pixel seal"],
+            ["Side Callouts", "hover reveals offset text, useful for dense corner layouts"],
+            ["Difference Ink", "labels use blend contrast and feel etched into the field"],
+            ["Truncated Codes", "short clipped labels emphasize mystery and navigation by memory"],
+          ],
+        },
+      ];
+
+      const canvas = document.getElementById("vesica-canvas");
+      const ctx = canvas.getContext("2d", { alpha: true });
+      const statusCanvas = document.getElementById("status-canvas");
+      const statusCtx = statusCanvas.getContext("2d", { alpha: true });
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const prototype = document.getElementById("prototype");
+      const navField = document.getElementById("nav-field");
+      const controlGrid = document.getElementById("control-grid");
+      const comboTitle = document.getElementById("combo-title");
+      const comboCopy = document.getElementById("combo-copy");
+      const ghostLine = document.getElementById("ghost-line");
+
+      const TAU = Math.PI * 2;
+      const DPR_CAP = 2;
+      const INTRO_DONE_AT = 4.05;
+      const FIRST_CIRCLE_DONE_AT = 1.35;
+      const SEPARATION_START_AT = 1.42;
+      const SEPARATION_DONE_AT = 2.75;
+      const ROTATION_START_AT = 3.05;
+
+      const state = {
+        width: 0,
+        height: 0,
+        dpr: 1,
+        cell: 6,
+        gap: 1,
+        radiusCells: 18,
+        gridHalfX: 48,
+        gridHalfY: 48,
+        startedAt: performance.now(),
+        raf: 0,
+        reduced: reducedMotion.matches,
+        shape: 0,
+        layout: 0,
+        interaction: 0,
+        labels: 0,
+        nodes: [],
+      };
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const clamp01 = (v) => clamp(v, 0, 1);
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smoothstep = (t) => {
+        t = clamp01(t);
+        return t * t * (3 - 2 * t);
+      };
+      const easeOutCubic = (t) => 1 - Math.pow(1 - clamp01(t), 3);
+      const easeInOutCubic = (t) => {
+        t = clamp01(t);
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
+
+      function hash2(x, y) {
+        const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+        return n - Math.floor(n);
+      }
+
+      function waveNoise(x, y, t) {
+        return 0.5 + 0.5 * Math.sin(x * 0.67 + y * 1.31 + t * 5.2 + hash2(x, y) * TAU);
+      }
+
+      function signedCircleDistance(x, y, cx, cy, r) {
+        return Math.hypot(x - cx, y - cy) - r;
+      }
+
+      function circleOutlineAlpha(x, y, cx, cy, r, presence, spinTime, direction, boost = 1) {
+        if (presence <= 0 || r <= 0.2) return 0;
+        const distanceToRing = Math.abs(signedCircleDistance(x, y, cx, cy, r));
+        const thickness = 0.58;
+        if (distanceToRing > thickness) return 0;
+        const edge = 1 - smoothstep(distanceToRing / thickness);
+        const theta = Math.atan2(y - cy, x - cx);
+        const orbital = 0.5 + 0.5 * Math.sin(theta * 5 + spinTime * direction * 2.35);
+        const secondary = 0.5 + 0.5 * Math.sin(theta * 2 - spinTime * direction * 1.45 + 1.7);
+        return clamp01(presence * edge * (0.62 + 0.28 * orbital + 0.1 * secondary) * boost);
+      }
+
+      function centerPointAlpha(x, y, cx, cy, presence, radius = 0.72) {
+        if (presence <= 0) return 0;
+        const d = Math.hypot(x - cx, y - cy);
+        if (d > radius) return 0;
+        return presence * (1 - smoothstep(d / radius));
+      }
+
+      function getConstruction(seconds) {
+        const R = state.radiusCells;
+        const t = state.reduced ? INTRO_DONE_AT : seconds;
+        let seed = 0;
+        let firstPresence = 0;
+        let secondPresence = 0;
+        let firstRadius = 0;
+        let secondRadius = 0;
+        let secondSeed = 0;
+        let pairProgress = 0;
+        let lens = 0;
+        let idle = 0;
+
+        if (t < 0.28) {
+          seed = smoothstep(t / 0.28);
+        } else if (t < FIRST_CIRCLE_DONE_AT) {
+          const p = easeOutCubic((t - 0.28) / 1.07);
+          seed = 1 - p * 0.85;
+          firstPresence = smoothstep(p);
+          firstRadius = lerp(0.55, R, p);
+        } else {
+          firstPresence = 1;
+          firstRadius = R;
+        }
+
+        if (t >= FIRST_CIRCLE_DONE_AT) {
+          secondPresence = 1;
+          secondRadius = R;
+        }
+
+        if (t >= SEPARATION_START_AT && t < SEPARATION_DONE_AT) {
+          const p = easeInOutCubic((t - SEPARATION_START_AT) / (SEPARATION_DONE_AT - SEPARATION_START_AT));
+          pairProgress = p;
+          secondSeed = smoothstep(p) * (1 - p * 0.66);
+        } else if (t >= SEPARATION_DONE_AT) {
+          pairProgress = 1;
+          secondPresence = 1;
+          secondRadius = R;
+          secondSeed = 0.34;
+        }
+
+        if (t >= SEPARATION_DONE_AT && t < 3.55) {
+          lens = smoothstep((t - SEPARATION_DONE_AT) / 0.8);
+        } else if (t >= 3.55) {
+          lens = 1;
+        }
+
+        if (t >= ROTATION_START_AT) {
+          idle = smoothstep((t - ROTATION_START_AT) / 0.18);
+        }
+
+        const separation = easeInOutCubic(pairProgress);
+        const offsetX = -0.5 * R * separation;
+        return {
+          R,
+          seed,
+          firstPresence,
+          secondPresence,
+          firstRadius,
+          secondRadius,
+          secondSeed,
+          pairProgress,
+          lens,
+          idle,
+          c1x: offsetX,
+          c2x: offsetX + R * separation,
+          c1y: 0,
+          c2y: 0,
+        };
+      }
+
+      function resizeMain() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+        const width = Math.max(1, Math.floor(rect.width * dpr));
+        const height = Math.max(1, Math.floor(rect.height * dpr));
+
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+        }
+
+        state.width = width;
+        state.height = height;
+        state.dpr = dpr;
+        const cssMin = Math.min(rect.width, rect.height);
+        state.cell = Math.max(4, Math.round((cssMin < 260 ? 5 : 6) * dpr));
+        state.gap = Math.max(1, Math.round(1 * dpr));
+        const minGridDimension = Math.min(width, height) / state.cell;
+        state.radiusCells = clamp(Math.floor(minGridDimension / 3.45), 13, 20);
+        state.gridHalfX = Math.ceil(width / state.cell / 2) + 4;
+        state.gridHalfY = Math.ceil(height / state.cell / 2) + 4;
+
+        const statusRect = statusCanvas.getBoundingClientRect();
+        const statusWidth = Math.max(1, Math.floor(statusRect.width * dpr));
+        const statusHeight = Math.max(1, Math.floor(statusRect.height * dpr));
+        if (statusCanvas.width !== statusWidth || statusCanvas.height !== statusHeight) {
+          statusCanvas.width = statusWidth;
+          statusCanvas.height = statusHeight;
+        }
+
+        state.nodes.forEach((node) => resizeGlyph(node.canvas));
+      }
+
+      function drawPixel(gx, gy, alpha, scale = 1) {
+        const size = Math.max(1, Math.round((state.cell - state.gap) * scale));
+        const px = Math.round(state.width / 2 + gx * state.cell - size / 2);
+        const py = Math.round(state.height / 2 + gy * state.cell - size / 2);
+        ctx.globalAlpha = clamp01(alpha);
+        ctx.fillRect(px, py, size, size);
+      }
+
+      function drawStatusLine(seconds) {
+        const width = statusCanvas.width;
+        const height = statusCanvas.height;
+        const dpr = state.dpr;
+        const pixel = Math.max(6, Math.round(8 * dpr));
+        const gap = Math.max(3, Math.round(4 * dpr));
+        const step = pixel + gap;
+        const cells = Math.max(1, Math.floor((width + gap) / step));
+        const cycle = state.reduced ? 1 : (seconds % 4.05) / 4.05;
+        const head = cycle * (cells * 2);
+
+        statusCtx.clearRect(0, 0, width, height);
+        statusCtx.fillStyle = "#fff";
+
+        for (let i = 0; i < cells; i++) {
+          const distance = Math.abs(i - head);
+          const wrappedDistance = Math.min(distance, Math.abs(i + cells * 2 - head));
+          const wave = clamp01(1 - wrappedDistance / cells);
+          const base = 0.12 + 0.12 * waveNoise(i, 0, seconds * 0.52);
+          const glow = Math.pow(wave, 1.35) * (0.62 + 0.26 * waveNoise(i, 1, seconds));
+          statusCtx.globalAlpha = state.reduced ? 0.48 : clamp01(base + glow);
+          statusCtx.fillRect(i * step, 0, pixel, height);
+        }
+
+        statusCtx.globalAlpha = 1;
+      }
+
+      function drawMain(now) {
+        resizeMain();
+        const seconds = (now - state.startedAt) / 1000;
+        const model = getConstruction(seconds);
+        const idleTime = Math.max(0, seconds - ROTATION_START_AT);
+        const rotation = state.reduced ? 0 : model.idle * idleTime * 0.23;
+        const ca = Math.cos(-rotation);
+        const sa = Math.sin(-rotation);
+
+        ctx.clearRect(0, 0, state.width, state.height);
+        ctx.fillStyle = "#fff";
+        drawStatusLine(seconds);
+
+        for (let gy = -state.gridHalfY; gy <= state.gridHalfY; gy++) {
+          for (let gx = -state.gridHalfX; gx <= state.gridHalfX; gx++) {
+            const x = gx * ca - gy * sa;
+            const y = gx * sa + gy * ca;
+            const n = hash2(gx, gy);
+            const shimmer = state.reduced ? 0.75 : waveNoise(gx, gy, seconds);
+            const d1 = signedCircleDistance(x, y, model.c1x, model.c1y, model.firstRadius);
+            const d2 = signedCircleDistance(x, y, model.c2x, model.c2y, model.secondRadius);
+            const a1 = circleOutlineAlpha(x, y, model.c1x, model.c1y, model.firstRadius, model.firstPresence, seconds, 1, model.lens > 0.96 ? 0.72 : 0.92);
+            const a2 = circleOutlineAlpha(x, y, model.c2x, model.c2y, model.secondRadius, model.secondPresence, seconds, model.pairProgress > 0 ? -1 : 1, model.lens > 0.96 ? 0.72 : 0.92);
+            let lensArc = 0;
+            if (model.lens > 0 && model.secondPresence > 0.98) {
+              const ringThickness = 0.74;
+              const leftArc = Math.abs(d1) < ringThickness && d2 <= 0.2;
+              const rightArc = Math.abs(d2) < ringThickness && d1 <= 0.2;
+              if (leftArc || rightArc) {
+                lensArc = model.lens * Math.max(1 - smoothstep(Math.abs(d1) / ringThickness), 1 - smoothstep(Math.abs(d2) / ringThickness)) * (0.82 + shimmer * 0.18);
+              }
+            }
+
+            let lensInterior = 0;
+            if (model.lens > 0.18 && d1 < -0.25 && d2 < -0.25) {
+              const depth = clamp01(Math.min(-d1, -d2) / 4.5);
+              if (n < 0.055 + depth * 0.045 && shimmer > 0.52) {
+                lensInterior = model.lens * depth * 0.18 * shimmer;
+              }
+            }
+
+            const seedAlpha = centerPointAlpha(x, y, model.c1x, model.c1y, model.seed, 0.64);
+            const firstCenterAlpha = centerPointAlpha(x, y, model.c1x, model.c1y, model.firstPresence * (model.lens > 0.98 ? 0.22 : 0.5), 0.58);
+            const secondCenterAlpha = centerPointAlpha(x, y, model.c2x, model.c2y, model.secondSeed * (model.lens > 0.98 ? 0.58 : 1), 0.62);
+            let alpha = Math.max(a1, a2, lensArc, lensInterior, seedAlpha, firstCenterAlpha, secondCenterAlpha);
+            if (alpha > 0 && lensArc < 0.65) alpha *= 0.82 + 0.18 * shimmer;
+            if (alpha > 0.015) {
+              drawPixel(gx, gy, alpha, lensArc > 0.45 ? 1 : Math.max(seedAlpha, firstCenterAlpha, secondCenterAlpha) > 0.08 ? 0.96 : 0.9);
+            }
+          }
+        }
+
+        ctx.globalAlpha = 1;
+        drawGlyphs(seconds);
+        if (!state.reduced) {
+          state.raf = requestAnimationFrame(drawMain);
+        }
+      }
+
+      function resizeGlyph(canvasEl) {
+        const rect = canvasEl.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+        const width = Math.max(1, Math.floor(rect.width * dpr));
+        const height = Math.max(1, Math.floor(rect.height * dpr));
+        if (canvasEl.width !== width || canvasEl.height !== height) {
+          canvasEl.width = width;
+          canvasEl.height = height;
+        }
+      }
+
+      function glyphDistance(shape, x, y, t, phase) {
+        const r = Math.hypot(x, y);
+        const a = Math.atan2(y, x);
+        const pulse = Math.sin(t * 1.8 + phase) * 0.55;
+
+        if (shape === 0) {
+          const c = 3.2 + pulse * 0.3;
+          return Math.min(Math.abs(Math.hypot(x + c, y) - 8.1), Math.abs(Math.hypot(x - c, y) - 8.1));
+        }
+
+        if (shape === 1) {
+          const sides = 3;
+          const k = Math.cos(Math.PI / sides) / Math.cos((a + Math.PI / 2) % (TAU / sides) - Math.PI / sides);
+          return Math.abs(r * k - (9.2 + pulse * 0.4));
+        }
+
+        if (shape === 2) {
+          const outer = Math.max(Math.abs(x), Math.abs(y));
+          const inner = Math.max(Math.abs(x), Math.abs(y)) - 4.9;
+          const bracket = Math.min(Math.abs(outer - 9.2), Math.abs(inner));
+          const notch = Math.min(Math.abs(Math.abs(x) - 9.2), Math.abs(Math.abs(y) - 9.2));
+          return Math.min(bracket, notch + 0.3);
+        }
+
+        if (shape === 3) {
+          const sides = 6;
+          const k = Math.cos(Math.PI / sides) / Math.cos((a + Math.PI / 6) % (TAU / sides) - Math.PI / sides);
+          return Math.min(Math.abs(r * k - 8.9), Math.abs(Math.hypot(x, y) - 3.1));
+        }
+
+        if (shape === 4) {
+          const c = 3.4;
+          return Math.min(
+            Math.abs(Math.hypot(x + c, y) - 7.5),
+            Math.abs(Math.hypot(x - c, y) - 7.5),
+            Math.abs(Math.hypot(x, y + c) - 7.5),
+            Math.abs(Math.hypot(x, y - c) - 7.5)
+          );
+        }
+
+        if (shape === 5) {
+          const diamond = Math.abs(Math.abs(x) + Math.abs(y) - 11.8);
+          const inner = Math.abs(Math.abs(x) + Math.abs(y) - 5.8);
+          return Math.min(diamond, inner + 0.15);
+        }
+
+        const spiral = 2.1 + a * 1.3 + 3.4 * Math.floor((r + 3) / 7);
+        return Math.abs(r - spiral) + Math.max(0, r - 12) * 0.2;
+      }
+
+      function drawGlyph(node, seconds) {
+        const canvasEl = node.canvas;
+        const g = canvasEl.getContext("2d", { alpha: true });
+        const w = canvasEl.width;
+        const h = canvasEl.height;
+        const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+        const cell = Math.max(4, Math.round(5 * dpr));
+        const gap = Math.max(1, Math.round(1 * dpr));
+        const halfX = Math.ceil(w / cell / 2);
+        const halfY = Math.ceil(h / cell / 2);
+
+        g.clearRect(0, 0, w, h);
+        g.fillStyle = "#fff";
+
+        for (let gy = -halfY; gy <= halfY; gy++) {
+          for (let gx = -halfX; gx <= halfX; gx++) {
+            const wobble = state.reduced ? 0 : Math.sin(seconds * 1.4 + node.index * 0.7) * 0.12;
+            const ca = Math.cos(wobble);
+            const sa = Math.sin(wobble);
+            const x = gx * ca - gy * sa;
+            const y = gx * sa + gy * ca;
+            const d = glyphDistance(state.shape, x, y, seconds, node.index * 0.9);
+            if (d > 0.78) continue;
+            const edge = 1 - smoothstep(d / 0.78);
+            const shimmer = state.reduced ? 0.72 : waveNoise(gx + node.index * 9, gy - node.index * 3, seconds * 0.72);
+            const sparse = hash2(gx + node.index * 17, gy - node.index * 11);
+            if (sparse > 0.92 && edge < 0.7) continue;
+            const alpha = clamp01(edge * (0.42 + 0.56 * shimmer));
+            const size = Math.max(1, Math.round((cell - gap) * (0.86 + edge * 0.18)));
+            g.globalAlpha = alpha;
+            g.fillRect(Math.round(w / 2 + gx * cell - size / 2), Math.round(h / 2 + gy * cell - size / 2), size, size);
+          }
+        }
+
+        const center = Math.max(1, Math.round((cell - gap) * 0.95));
+        g.globalAlpha = 0.56 + 0.22 * Math.sin(seconds * 2 + node.index);
+        g.fillRect(Math.round(w / 2 - center / 2), Math.round(h / 2 - center / 2), center, center);
+        g.globalAlpha = 1;
+      }
+
+      function drawGlyphs(seconds) {
+        state.nodes.forEach((node) => drawGlyph(node, seconds));
+      }
+
+      function layoutPositions(layout, count) {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const marginX = clamp(vw * 0.1, 72, 160);
+        const marginY = clamp(vh * 0.12, 76, 136);
+        const bottomClearance = window.innerWidth < 860 ? 270 : 205;
+        const bottomY = vh - Math.max(marginY, bottomClearance);
+        const cx = vw / 2;
+        const cy = vh / 2;
+        const r = Math.min(vw, vh) * 0.34;
+
+        if (layout === 0) {
+          return [
+            [marginX, marginY],
+            [vw - marginX, marginY],
+            [vw - marginX, bottomY],
+            [marginX, bottomY],
+            [cx, marginY * 0.84],
+            [cx, bottomY],
+          ];
+        }
+
+        if (layout === 1) {
+          return Array.from({ length: count }, (_, i) => {
+            const a = -Math.PI / 2 + (i / count) * TAU;
+            return [cx + Math.cos(a) * r * 1.12, cy + Math.sin(a) * r * 0.86];
+          });
+        }
+
+        if (layout === 2) {
+          return Array.from({ length: count }, (_, i) => {
+            const p = count === 1 ? 0.5 : i / (count - 1);
+            return [lerp(marginX, vw - marginX, p), lerp(marginY, bottomY, p) + Math.sin(p * Math.PI * 2) * 42];
+          });
+        }
+
+        if (layout === 3) {
+          return Array.from({ length: count }, (_, i) => {
+            const side = i % 2 === 0 ? marginX : vw - marginX;
+            const row = Math.floor(i / 2);
+            return [side, lerp(marginY, bottomY, row / 2)];
+          });
+        }
+
+        if (layout === 4) {
+          return [
+            [cx, marginY],
+            [vw - marginX, cy],
+            [cx, bottomY],
+            [marginX, cy],
+            [cx + r * 0.72, cy - r * 0.52],
+            [cx - r * 0.72, Math.min(bottomY, cy + r * 0.52)],
+          ];
+        }
+
+        if (layout === 5) {
+          const golden = 2.399963;
+          return Array.from({ length: count }, (_, i) => {
+            const a = -2.55 + i * golden;
+            const rr = r * (1 - i / (count + 1)) + 28;
+            return [cx + Math.cos(a) * rr * 1.16, cy + Math.sin(a) * rr * 0.92];
+          });
+        }
+
+        return Array.from({ length: count }, (_, i) => {
+          const p = count === 1 ? 0.5 : i / (count - 1);
+          return [lerp(marginX, vw - marginX, p), bottomY + Math.sin(p * Math.PI) * -24];
+        });
+      }
+
+      function drawGhostLines(positions) {
+        const points = positions.map(([x, y]) => `${Math.round(x)},${Math.round(y)}`).join(" ");
+        const circles = positions.map(([x, y]) => `<circle cx="${Math.round(x)}" cy="${Math.round(y)}" r="18"></circle>`).join("");
+        const centerX = Math.round(window.innerWidth / 2);
+        const centerY = Math.round(window.innerHeight / 2);
+        ghostLine.innerHTML = `
+          <svg aria-hidden="true" focusable="false">
+            <polyline points="${points}"></polyline>
+            <line x1="${centerX}" y1="0" x2="${centerX}" y2="${window.innerHeight}"></line>
+            <line x1="0" y1="${centerY}" x2="${window.innerWidth}" y2="${centerY}"></line>
+            ${circles}
+          </svg>
+        `;
+      }
+
+      function applyLayout() {
+        const positions = layoutPositions(state.layout, links.length);
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        state.nodes.forEach((node, index) => {
+          const [x, y] = positions[index];
+          node.el.style.setProperty("--x", `${x}px`);
+          node.el.style.setProperty("--y", `${y}px`);
+          node.el.style.setProperty("--delay", `${index * -0.62}s`);
+          node.el.style.setProperty("--pull-x", `${(cx - x) * 0.035}px`);
+          node.el.style.setProperty("--pull-y", `${(cy - y) * 0.035}px`);
+        });
+        drawGhostLines(positions);
+      }
+
+      function renderNav() {
+        navField.innerHTML = "";
+        state.nodes = links.map((link, index) => {
+          const a = document.createElement("a");
+          a.className = "nav-node";
+          a.href = link.url;
+          a.setAttribute("aria-label", link.title);
+          a.style.setProperty("--size", `${index % 2 === 0 ? 94 : 84}px`);
+
+          const c = document.createElement("canvas");
+          const label = document.createElement("span");
+          label.className = "nav-label";
+          label.textContent = link.title;
+          a.append(c, label);
+          navField.append(a);
+          resizeGlyph(c);
+          return { el: a, canvas: c, index };
+        });
+        applyLayout();
+      }
+
+      function renderControls() {
+        controlGrid.innerHTML = "";
+        dimensions.forEach((dimension) => {
+          const group = document.createElement("section");
+          group.className = "control-group";
+          group.innerHTML = `
+            <div class="control-title">
+              <span>${dimension.title}</span>
+              <span id="${dimension.key}-name">${dimension.options[state[dimension.key]][0]}</span>
+            </div>
+            <div class="option-row" role="group" aria-label="${dimension.title} options"></div>
+          `;
+          const row = group.querySelector(".option-row");
+          dimension.options.forEach((option, index) => {
+            const button = document.createElement("button");
+            button.className = "option";
+            button.type = "button";
+            button.textContent = index + 1;
+            button.title = option[0];
+            button.setAttribute("aria-pressed", String(index === state[dimension.key]));
+            button.addEventListener("click", () => {
+              state[dimension.key] = index;
+              syncState();
+            });
+            row.append(button);
+          });
+          controlGrid.append(group);
+        });
+      }
+
+      function syncState() {
+        prototype.dataset.shape = String(state.shape);
+        prototype.dataset.layout = String(state.layout);
+        prototype.dataset.interaction = String(state.interaction);
+        prototype.dataset.labels = String(state.labels);
+
+        dimensions.forEach((dimension) => {
+          const active = dimension.options[state[dimension.key]];
+          const name = document.getElementById(`${dimension.key}-name`);
+          if (name) name.textContent = active[0];
+        });
+
+        document.querySelectorAll(".control-group").forEach((group, groupIndex) => {
+          const key = dimensions[groupIndex].key;
+          group.querySelectorAll(".option").forEach((button, index) => {
+            button.setAttribute("aria-pressed", String(index === state[key]));
+          });
+        });
+
+        applyLayout();
+        updateReadout();
+      }
+
+      function updateReadout() {
+        const selected = dimensions.map((dimension) => dimension.options[state[dimension.key]]);
+        comboTitle.textContent = `${selected[0][0]} / ${selected[1][0]} / ${selected[2][0]}`;
+        comboCopy.textContent = `${selected[0][1]}. ${selected[1][1]}. ${selected[2][1]}. ${selected[3][1]}.`;
+      }
+
+      function step(delta) {
+        const keys = dimensions.map((d) => d.key);
+        for (let i = keys.length - 1; i >= 0; i--) {
+          const key = keys[i];
+          state[key] += delta;
+          if (state[key] >= 0 && state[key] <= 6) break;
+          state[key] = delta > 0 ? 0 : 6;
+        }
+        syncState();
+      }
+
+      function shuffle() {
+        dimensions.forEach((dimension) => {
+          state[dimension.key] = Math.floor(Math.random() * dimension.options.length);
+        });
+        syncState();
+      }
+
+      function start() {
+        cancelAnimationFrame(state.raf);
+        state.reduced = reducedMotion.matches;
+        state.startedAt = performance.now();
+        drawMain(state.startedAt);
+        if (!state.reduced) state.raf = requestAnimationFrame(drawMain);
+      }
+
+      window.addEventListener("resize", () => {
+        resizeMain();
+        applyLayout();
+      }, { passive: true });
+
+      document.getElementById("previous").addEventListener("click", () => step(-1));
+      document.getElementById("next").addEventListener("click", () => step(1));
+      document.getElementById("shuffle").addEventListener("click", shuffle);
+      reducedMotion.addEventListener?.("change", start);
+
+      renderNav();
+      renderControls();
+      syncState();
+      start();
+    })();
+  </script>
+</body>
+</html>
