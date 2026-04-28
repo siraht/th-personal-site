@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#000000" />
-  <title>Maintenance</title>
+  <title>Rebuild in Progress</title>
   <style>
     :root {
       color-scheme: dark;
@@ -104,42 +104,46 @@
       text-transform: uppercase;
     }
 
-    p {
-      max-width: 36rem;
-      margin: 0;
-      color: var(--muted);
-      font-size: clamp(0.86rem, 2vw, 1rem);
-      line-height: 1.6;
-      letter-spacing: 0.02em;
-    }
-
     .status-line {
-      width: min(200px, 48vw);
-      height: 1px;
-      margin-top: 4px;
+      --pixel: 8px;
+      --track-gap: 4px;
+      width: min(224px, 54vw);
+      height: 8px;
+      margin-top: 2px;
       overflow: hidden;
-      background: var(--faint);
+      background:
+        repeating-linear-gradient(
+          90deg,
+          var(--faint) 0 var(--pixel),
+          transparent var(--pixel) calc(var(--pixel) + var(--track-gap))
+        );
     }
 
     .status-line::before {
       content: "";
       display: block;
-      width: 42%;
+      width: 100%;
       height: 100%;
-      background: var(--fg);
-      animation: scan 2.8s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          var(--fg) 0 var(--pixel),
+          transparent var(--pixel) calc(var(--pixel) + var(--track-gap))
+        );
+      clip-path: inset(0 100% 0 0);
+      animation: pixel-load 2.6s steps(18, end) infinite;
     }
 
-    @keyframes scan {
-      0% { transform: translateX(-110%); }
-      58%, 100% { transform: translateX(270%); }
+    @keyframes pixel-load {
+      0% { clip-path: inset(0 100% 0 0); }
+      76% { clip-path: inset(0 0 0 0); }
+      100% { clip-path: inset(0 0 0 0); }
     }
 
     @media (prefers-reduced-motion: reduce) {
       .status-line::before {
         animation: none;
-        transform: none;
-        width: 100%;
+        clip-path: inset(0 0 0 0);
         opacity: 0.55;
       }
     }
@@ -155,8 +159,7 @@
       </div>
 
       <div class="copy">
-        <h1 id="maintenance-title">Maintenance</h1>
-        <p>The site is being updated.</p>
+        <h1 id="maintenance-title">Rebuild in Progress</h1>
         <div class="status-line" aria-hidden="true"></div>
       </div>
     </section>
@@ -273,18 +276,15 @@
           firstRadius = R;
         }
 
-        if (t >= 1.35 && t < 1.72) {
-          secondSeed = smoothstep((t - 1.35) / 0.37);
-        } else if (t >= 1.72 && t < 2.15) {
-          secondSeed = 1;
+        if (t >= 1.35) {
+          secondPresence = 1;
+          secondRadius = R;
         }
 
-        if (t >= 1.82 && t < 3.05) {
-          const p = easeInOutCubic((t - 1.82) / 1.23);
+        if (t >= 1.72 && t < 3.05) {
+          const p = easeInOutCubic((t - 1.72) / 1.33);
           pairProgress = p;
-          secondPresence = smoothstep(p);
-          secondRadius = lerp(0.55, R, p);
-          secondSeed = 1 - p * 0.55;
+          secondSeed = smoothstep(p) * (1 - p * 0.66);
         } else if (t >= 3.05) {
           pairProgress = 1;
           secondPresence = 1;
@@ -302,13 +302,12 @@
           idle = smoothstep((t - INTRO_DONE_AT) / 0.9);
         }
 
-        // Circle construction starts with the first circle centered on the seed.
-        // As the second circle appears, the pair recenters into canonical vesica geometry:
-        // two equal circles whose centers are one radius apart.
-        const recenter = easeInOutCubic(pairProgress);
-        const offsetX = -0.5 * R * recenter;
+        // The second circle is full-size and exactly aligned with the first before
+        // separation, so it only becomes perceptible as the two centers pull apart.
+        const separation = easeInOutCubic(pairProgress);
+        const offsetX = -0.5 * R * separation;
         const c1x = offsetX;
-        const c2x = offsetX + R;
+        const c2x = offsetX + R * separation;
 
         return {
           R,
@@ -407,7 +406,7 @@
               model.secondRadius,
               model.secondPresence,
               seconds,
-              -1,
+              model.pairProgress > 0 ? -1 : 1,
               model.lens > 0.96 ? 0.72 : 0.92
             );
 
