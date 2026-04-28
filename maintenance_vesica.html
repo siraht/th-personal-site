@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#000000" />
+  <title>Maintenance</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #000;
+      --fg: #fff;
+      --muted: rgba(255, 255, 255, 0.58);
+      --faint: rgba(255, 255, 255, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      overflow: hidden;
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    body {
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(100vw, 960px);
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+      isolation: isolate;
+    }
+
+    .ambient-grid {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.11;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: radial-gradient(circle at center, #000 0%, transparent 72%);
+    }
+
+    .content {
+      display: grid;
+      justify-items: center;
+      gap: clamp(18px, 4vmin, 34px);
+      transform: translateY(-1.5vmin);
+    }
+
+    .mark-wrap {
+      width: min(78vw, 390px);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      display: block;
+    }
+
+    .copy {
+      display: grid;
+      justify-items: center;
+      gap: 10px;
+      text-align: center;
+      user-select: none;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(0.72rem, 1.5vw, 0.9rem);
+      font-weight: 650;
+      line-height: 1.1;
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+    }
+
+    p {
+      max-width: 36rem;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.86rem, 2vw, 1rem);
+      line-height: 1.6;
+      letter-spacing: 0.02em;
+    }
+
+    .status-line {
+      width: min(200px, 48vw);
+      height: 1px;
+      margin-top: 4px;
+      overflow: hidden;
+      background: var(--faint);
+    }
+
+    .status-line::before {
+      content: "";
+      display: block;
+      width: 42%;
+      height: 100%;
+      background: var(--fg);
+      animation: scan 2.8s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+    }
+
+    @keyframes scan {
+      0% { transform: translateX(-110%); }
+      58%, 100% { transform: translateX(270%); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .status-line::before {
+        animation: none;
+        transform: none;
+        width: 100%;
+        opacity: 0.55;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-grid" aria-hidden="true"></div>
+
+  <main class="page" aria-labelledby="maintenance-title">
+    <section class="content" aria-label="Site maintenance notice">
+      <div class="mark-wrap" aria-hidden="true">
+        <canvas id="vesica-canvas"></canvas>
+      </div>
+
+      <div class="copy">
+        <h1 id="maintenance-title">Maintenance</h1>
+        <p>The site is being updated.</p>
+        <div class="status-line" aria-hidden="true"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("vesica-canvas");
+      const ctx = canvas.getContext("2d", { alpha: true });
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+      const TAU = Math.PI * 2;
+      const DPR_CAP = 2;
+      const INTRO_DONE_AT = 4.05;
+
+      const state = {
+        width: 0,
+        height: 0,
+        dpr: 1,
+        cell: 6,
+        gap: 1,
+        radiusCells: 18,
+        gridHalfX: 48,
+        gridHalfY: 48,
+        startedAt: performance.now(),
+        raf: 0,
+        reduced: reducedMotion.matches,
+      };
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const clamp01 = (v) => clamp(v, 0, 1);
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smoothstep = (t) => {
+        t = clamp01(t);
+        return t * t * (3 - 2 * t);
+      };
+      const easeOutCubic = (t) => 1 - Math.pow(1 - clamp01(t), 3);
+      const easeInOutCubic = (t) => {
+        t = clamp01(t);
+        return t < 0.5
+          ? 4 * t * t * t
+          : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
+
+      function hash2(x, y) {
+        const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+        return n - Math.floor(n);
+      }
+
+      function waveNoise(x, y, t) {
+        return 0.5 + 0.5 * Math.sin(
+          x * 0.67 +
+          y * 1.31 +
+          t * 5.2 +
+          hash2(x, y) * TAU
+        );
+      }
+
+      function signedCircleDistance(x, y, cx, cy, r) {
+        return Math.hypot(x - cx, y - cy) - r;
+      }
+
+      function circleOutlineAlpha(x, y, cx, cy, r, presence, spinTime, direction, boost = 1) {
+        if (presence <= 0 || r <= 0.2) return 0;
+
+        const distanceToRing = Math.abs(signedCircleDistance(x, y, cx, cy, r));
+        const thickness = 0.58;
+        if (distanceToRing > thickness) return 0;
+
+        const edge = 1 - smoothstep(distanceToRing / thickness);
+        const theta = Math.atan2(y - cy, x - cx);
+
+        // Moving angular brightness makes each pixelated circle read as rotating,
+        // while the actual geometry remains mathematically clean.
+        const orbital = 0.5 + 0.5 * Math.sin(theta * 5 + spinTime * direction * 2.35);
+        const secondary = 0.5 + 0.5 * Math.sin(theta * 2 - spinTime * direction * 1.45 + 1.7);
+        const shimmer = 0.62 + 0.28 * orbital + 0.10 * secondary;
+
+        return clamp01(presence * edge * shimmer * boost);
+      }
+
+      function centerPointAlpha(x, y, cx, cy, presence, radius = 0.72) {
+        if (presence <= 0) return 0;
+        const d = Math.hypot(x - cx, y - cy);
+        if (d > radius) return 0;
+        return presence * (1 - smoothstep(d / radius));
+      }
+
+      function getConstruction(seconds) {
+        const R = state.radiusCells;
+        const t = state.reduced ? INTRO_DONE_AT : seconds;
+
+        let seed = 0;
+        let firstPresence = 0;
+        let secondPresence = 0;
+        let firstRadius = 0;
+        let secondRadius = 0;
+        let secondSeed = 0;
+        let pairProgress = 0;
+        let lens = 0;
+        let idle = 0;
+
+        if (t < 0.28) {
+          seed = smoothstep(t / 0.28);
+        } else if (t < 1.35) {
+          const p = easeOutCubic((t - 0.28) / 1.07);
+          seed = 1 - p * 0.85;
+          firstPresence = smoothstep(p);
+          firstRadius = lerp(0.55, R, p);
+        } else {
+          firstPresence = 1;
+          firstRadius = R;
+        }
+
+        if (t >= 1.35 && t < 1.72) {
+          secondSeed = smoothstep((t - 1.35) / 0.37);
+        } else if (t >= 1.72 && t < 2.15) {
+          secondSeed = 1;
+        }
+
+        if (t >= 1.82 && t < 3.05) {
+          const p = easeInOutCubic((t - 1.82) / 1.23);
+          pairProgress = p;
+          secondPresence = smoothstep(p);
+          secondRadius = lerp(0.55, R, p);
+          secondSeed = 1 - p * 0.55;
+        } else if (t >= 3.05) {
+          pairProgress = 1;
+          secondPresence = 1;
+          secondRadius = R;
+          secondSeed = 0.34;
+        }
+
+        if (t >= 3.05 && t < 3.85) {
+          lens = smoothstep((t - 3.05) / 0.8);
+        } else if (t >= 3.85) {
+          lens = 1;
+        }
+
+        if (t >= INTRO_DONE_AT) {
+          idle = smoothstep((t - INTRO_DONE_AT) / 0.9);
+        }
+
+        // Circle construction starts with the first circle centered on the seed.
+        // As the second circle appears, the pair recenters into canonical vesica geometry:
+        // two equal circles whose centers are one radius apart.
+        const recenter = easeInOutCubic(pairProgress);
+        const offsetX = -0.5 * R * recenter;
+        const c1x = offsetX;
+        const c2x = offsetX + R;
+
+        return {
+          R,
+          seed,
+          firstPresence,
+          secondPresence,
+          firstRadius,
+          secondRadius,
+          secondSeed,
+          pairProgress,
+          lens,
+          idle,
+          c1x,
+          c2x,
+          c1y: 0,
+          c2y: 0,
+        };
+      }
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+        const width = Math.max(1, Math.floor(rect.width * dpr));
+        const height = Math.max(1, Math.floor(rect.height * dpr));
+
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+        }
+
+        state.width = width;
+        state.height = height;
+        state.dpr = dpr;
+
+        const cssMin = Math.min(rect.width, rect.height);
+        const baseCell = cssMin < 260 ? 5 : 6;
+        state.cell = Math.max(4, Math.round(baseCell * dpr));
+        state.gap = Math.max(1, Math.round(1 * dpr));
+
+        const minGridDimension = Math.min(width, height) / state.cell;
+        state.radiusCells = clamp(Math.floor(minGridDimension / 3.45), 13, 20);
+        state.gridHalfX = Math.ceil(width / state.cell / 2) + 4;
+        state.gridHalfY = Math.ceil(height / state.cell / 2) + 4;
+      }
+
+      function drawPixel(gx, gy, alpha, scale = 1) {
+        const size = Math.max(1, Math.round((state.cell - state.gap) * scale));
+        const px = Math.round(state.width / 2 + gx * state.cell - size / 2);
+        const py = Math.round(state.height / 2 + gy * state.cell - size / 2);
+        ctx.globalAlpha = clamp01(alpha);
+        ctx.fillRect(px, py, size, size);
+      }
+
+      function draw(now) {
+        resize();
+
+        const seconds = (now - state.startedAt) / 1000;
+        const model = getConstruction(seconds);
+        const idleTime = Math.max(0, seconds - INTRO_DONE_AT);
+        const rotation = state.reduced ? 0 : model.idle * idleTime * 0.23;
+        const ca = Math.cos(-rotation);
+        const sa = Math.sin(-rotation);
+
+        ctx.clearRect(0, 0, state.width, state.height);
+        ctx.fillStyle = "#fff";
+
+        for (let gy = -state.gridHalfY; gy <= state.gridHalfY; gy++) {
+          for (let gx = -state.gridHalfX; gx <= state.gridHalfX; gx++) {
+            // Inverse-rotate the sampling point so the geometry can rotate as a whole.
+            const x = gx * ca - gy * sa;
+            const y = gx * sa + gy * ca;
+
+            const n = hash2(gx, gy);
+            const shimmer = state.reduced ? 0.75 : waveNoise(gx, gy, seconds);
+
+            const d1 = signedCircleDistance(x, y, model.c1x, model.c1y, model.firstRadius);
+            const d2 = signedCircleDistance(x, y, model.c2x, model.c2y, model.secondRadius);
+
+            const a1 = circleOutlineAlpha(
+              x,
+              y,
+              model.c1x,
+              model.c1y,
+              model.firstRadius,
+              model.firstPresence,
+              seconds,
+              1,
+              model.lens > 0.96 ? 0.72 : 0.92
+            );
+
+            const a2 = circleOutlineAlpha(
+              x,
+              y,
+              model.c2x,
+              model.c2y,
+              model.secondRadius,
+              model.secondPresence,
+              seconds,
+              -1,
+              model.lens > 0.96 ? 0.72 : 0.92
+            );
+
+            // Brighter vesica arcs: the portions of each circle that lie inside the other circle.
+            let lensArc = 0;
+            if (model.lens > 0 && model.secondPresence > 0.98) {
+              const ringThickness = 0.74;
+              const leftArc = Math.abs(d1) < ringThickness && d2 <= 0.2;
+              const rightArc = Math.abs(d2) < ringThickness && d1 <= 0.2;
+
+              if (leftArc || rightArc) {
+                const e1 = 1 - smoothstep(Math.abs(d1) / ringThickness);
+                const e2 = 1 - smoothstep(Math.abs(d2) / ringThickness);
+                lensArc = model.lens * Math.max(e1, e2) * (0.82 + shimmer * 0.18);
+              }
+            }
+
+            // Sparse interior particles make the vesica read as a formed glyph without becoming a solid almond.
+            let lensInterior = 0;
+            if (model.lens > 0.18 && d1 < -0.25 && d2 < -0.25) {
+              const depth = clamp01(Math.min(-d1, -d2) / 4.5);
+              const interiorChance = 0.055 + depth * 0.045;
+              if (n < interiorChance && shimmer > 0.52) {
+                lensInterior = model.lens * depth * 0.18 * shimmer;
+              }
+            }
+
+            // Construction center points: first seed, then the second circle center on the first circumference.
+            const seedAlpha = centerPointAlpha(x, y, model.c1x, model.c1y, model.seed, 0.64);
+            const firstCenterAlpha = centerPointAlpha(
+              x,
+              y,
+              model.c1x,
+              model.c1y,
+              model.firstPresence * (model.lens > 0.98 ? 0.22 : 0.5),
+              0.58
+            );
+            const secondCenterAlpha = centerPointAlpha(
+              x,
+              y,
+              model.c2x,
+              model.c2y,
+              model.secondSeed * (model.lens > 0.98 ? 0.58 : 1),
+              0.62
+            );
+
+            let alpha = Math.max(
+              a1,
+              a2,
+              lensArc,
+              lensInterior,
+              seedAlpha,
+              firstCenterAlpha,
+              secondCenterAlpha
+            );
+
+            // Slight dither on non-critical particles; the primary vesica arcs remain stable.
+            if (alpha > 0 && lensArc < 0.65) {
+              alpha *= 0.82 + 0.18 * shimmer;
+            }
+
+            if (alpha > 0.015) {
+              const isVesicaArc = lensArc > 0.45;
+              const isCenter = Math.max(seedAlpha, firstCenterAlpha, secondCenterAlpha) > 0.08;
+              const scale = isVesicaArc ? 1 : isCenter ? 0.96 : 0.9;
+              drawPixel(gx, gy, alpha, scale);
+            }
+          }
+        }
+
+        ctx.globalAlpha = 1;
+        if (!state.reduced) {
+          state.raf = requestAnimationFrame(draw);
+        }
+      }
+
+      function start() {
+        cancelAnimationFrame(state.raf);
+        state.reduced = reducedMotion.matches;
+        state.startedAt = performance.now();
+        draw(state.startedAt);
+        if (!state.reduced) {
+          state.raf = requestAnimationFrame(draw);
+        }
+      }
+
+      window.addEventListener("resize", resize, { passive: true });
+      reducedMotion.addEventListener?.("change", start);
+      start();
+    })();
+  </script>
+</body>
+</html>
