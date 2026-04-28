@@ -176,6 +176,7 @@
       const TAU = Math.PI * 2;
       const DPR_CAP = 2;
       const INTRO_DONE_AT = 4.05;
+      const ROTATION_START_AT = 3.05;
 
       const state = {
         width: 0,
@@ -298,8 +299,8 @@
           lens = 1;
         }
 
-        if (t >= INTRO_DONE_AT) {
-          idle = smoothstep((t - INTRO_DONE_AT) / 0.9);
+        if (t >= ROTATION_START_AT) {
+          idle = smoothstep((t - ROTATION_START_AT) / 0.18);
         }
 
         // The second circle is full-size and exactly aligned with the first before
@@ -366,7 +367,7 @@
 
         const seconds = (now - state.startedAt) / 1000;
         const model = getConstruction(seconds);
-        const idleTime = Math.max(0, seconds - INTRO_DONE_AT);
+        const idleTime = Math.max(0, seconds - ROTATION_START_AT);
         const rotation = state.reduced ? 0 : model.idle * idleTime * 0.23;
         const ca = Math.cos(-rotation);
         const sa = Math.sin(-rotation);
