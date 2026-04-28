@@ -150,9 +150,9 @@
     }
 
     .signature {
-      width: 96px;
-      height: 22px;
-      margin-top: 2px;
+      width: 12rem;
+      height: 3rem;
+      margin-top: 8px;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
     }
@@ -188,6 +188,9 @@
       const TAU = Math.PI * 2;
       const DPR_CAP = 2;
       const INTRO_DONE_AT = 4.05;
+      const FIRST_CIRCLE_DONE_AT = 1.35;
+      const SEPARATION_START_AT = 1.42;
+      const SEPARATION_DONE_AT = 2.75;
       const ROTATION_START_AT = 3.05;
 
       const state = {
@@ -279,7 +282,7 @@
 
         if (t < 0.28) {
           seed = smoothstep(t / 0.28);
-        } else if (t < 1.35) {
+        } else if (t < FIRST_CIRCLE_DONE_AT) {
           const p = easeOutCubic((t - 0.28) / 1.07);
           seed = 1 - p * 0.85;
           firstPresence = smoothstep(p);
@@ -289,25 +292,25 @@
           firstRadius = R;
         }
 
-        if (t >= 1.35) {
+        if (t >= FIRST_CIRCLE_DONE_AT) {
           secondPresence = 1;
           secondRadius = R;
         }
 
-        if (t >= 1.72 && t < 3.05) {
-          const p = easeInOutCubic((t - 1.72) / 1.33);
+        if (t >= SEPARATION_START_AT && t < SEPARATION_DONE_AT) {
+          const p = easeInOutCubic((t - SEPARATION_START_AT) / (SEPARATION_DONE_AT - SEPARATION_START_AT));
           pairProgress = p;
           secondSeed = smoothstep(p) * (1 - p * 0.66);
-        } else if (t >= 3.05) {
+        } else if (t >= SEPARATION_DONE_AT) {
           pairProgress = 1;
           secondPresence = 1;
           secondRadius = R;
           secondSeed = 0.34;
         }
 
-        if (t >= 3.05 && t < 3.85) {
-          lens = smoothstep((t - 3.05) / 0.8);
-        } else if (t >= 3.85) {
+        if (t >= SEPARATION_DONE_AT && t < 3.55) {
+          lens = smoothstep((t - SEPARATION_DONE_AT) / 0.8);
+        } else if (t >= 3.55) {
           lens = 1;
         }
 
@@ -367,9 +370,9 @@
       }
 
       function drawSignature() {
-        const cssWidth = 96;
-        const cssHeight = 22;
-        const scale = 2;
+        const cssWidth = 192;
+        const cssHeight = 48;
+        const scale = 4;
 
         signatureCanvas.width = cssWidth / scale;
         signatureCanvas.height = cssHeight / scale;
@@ -377,7 +380,7 @@
         signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
         signatureCtx.fillStyle = "#fff";
         signatureCtx.globalAlpha = 0.82;
-        signatureCtx.font = "700 9px Georgia, 'Times New Roman', serif";
+        signatureCtx.font = "700 11px Georgia, 'Times New Roman', serif";
         signatureCtx.textAlign = "center";
         signatureCtx.textBaseline = "middle";
         signatureCtx.fillText("TH.US", signatureCanvas.width / 2, signatureCanvas.height / 2 + 0.5);
