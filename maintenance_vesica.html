@@ -148,6 +148,14 @@
         opacity: 0.55;
       }
     }
+
+    .signature {
+      width: 96px;
+      height: 22px;
+      margin-top: 2px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
   </style>
 </head>
 <body>
@@ -162,6 +170,7 @@
       <div class="copy">
         <h1 id="maintenance-title">Rebuild in Progress</h1>
         <div class="status-line" aria-hidden="true"></div>
+        <canvas class="signature" id="signature-canvas" role="img" aria-label="TH.US"></canvas>
       </div>
     </section>
   </main>
@@ -172,6 +181,8 @@
 
       const canvas = document.getElementById("vesica-canvas");
       const ctx = canvas.getContext("2d", { alpha: true });
+      const signatureCanvas = document.getElementById("signature-canvas");
+      const signatureCtx = signatureCanvas.getContext("2d", { alpha: true });
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
       const TAU = Math.PI * 2;
@@ -355,6 +366,24 @@
         state.gridHalfY = Math.ceil(height / state.cell / 2) + 4;
       }
 
+      function drawSignature() {
+        const cssWidth = 96;
+        const cssHeight = 22;
+        const scale = 2;
+
+        signatureCanvas.width = cssWidth / scale;
+        signatureCanvas.height = cssHeight / scale;
+
+        signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+        signatureCtx.fillStyle = "#fff";
+        signatureCtx.globalAlpha = 0.82;
+        signatureCtx.font = "700 9px Georgia, 'Times New Roman', serif";
+        signatureCtx.textAlign = "center";
+        signatureCtx.textBaseline = "middle";
+        signatureCtx.fillText("TH.US", signatureCanvas.width / 2, signatureCanvas.height / 2 + 0.5);
+        signatureCtx.globalAlpha = 1;
+      }
+
       function drawPixel(gx, gy, alpha, scale = 1) {
         const size = Math.max(1, Math.round((state.cell - state.gap) * scale));
         const px = Math.round(state.width / 2 + gx * state.cell - size / 2);
@@ -489,6 +518,7 @@
         cancelAnimationFrame(state.raf);
         state.reduced = reducedMotion.matches;
         state.startedAt = performance.now();
+        drawSignature();
         draw(state.startedAt);
         if (!state.reduced) {
           state.raf = requestAnimationFrame(draw);
