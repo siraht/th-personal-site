@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#02030a" />
+  <title>Travis Hinton - Homepage Sky Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #02030a;
+      --ink: #f8fbff;
+      --muted: rgba(235, 243, 255, 0.62);
+      --quiet: rgba(235, 243, 255, 0.38);
+      --line: rgba(235, 243, 255, 0.18);
+      --panel: rgba(2, 3, 10, 0.66);
+      --poetry: #ff9d76;
+      --work: #a8d8ff;
+      --about: #ffe08d;
+      --design: #b6a6ff;
+      --automation: #93efc6;
+      --contact: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family:
+        "IBM Plex Mono",
+        "Berkeley Mono",
+        "SFMono-Regular",
+        Consolas,
+        monospace;
+    }
+
+    button,
+    a {
+      font: inherit;
+    }
+
+    .site-shell {
+      position: relative;
+      min-height: 100svh;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 18% 22%, rgba(255, 157, 118, 0.12), transparent 23%),
+        radial-gradient(circle at 74% 48%, rgba(139, 185, 255, 0.13), transparent 30%),
+        radial-gradient(circle at 51% 84%, rgba(147, 239, 198, 0.07), transparent 24%),
+        #02030a;
+    }
+
+    #sky-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .grain,
+    .vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .grain {
+      opacity: 0.18;
+      mix-blend-mode: screen;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.032) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px);
+      background-size: 43px 43px;
+      mask-image: radial-gradient(circle at 52% 54%, #000 0%, transparent 82%);
+    }
+
+    .vignette {
+      z-index: 3;
+      background:
+        radial-gradient(circle at 50% 51%, transparent 0%, transparent 58%, rgba(0, 0, 0, 0.56) 100%),
+        linear-gradient(180deg, rgba(2, 3, 10, 0.2), transparent 18%, transparent 76%, rgba(2, 3, 10, 0.52));
+    }
+
+    .brand {
+      position: fixed;
+      left: max(20px, env(safe-area-inset-left));
+      top: max(18px, env(safe-area-inset-top));
+      z-index: 14;
+      display: grid;
+      gap: 10px;
+      max-width: min(610px, calc(100vw - 40px));
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(0.92rem, 1.75vw, 1.22rem);
+      font-weight: 760;
+      line-height: 1;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      text-shadow: 0 0 30px #02030a;
+    }
+
+    .brand p {
+      max-width: 66ch;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.58rem, 1vw, 0.7rem);
+      line-height: 1.65;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-shadow: 0 0 24px #02030a;
+    }
+
+    .sky-readout {
+      position: fixed;
+      right: max(18px, env(safe-area-inset-right));
+      top: max(18px, env(safe-area-inset-top));
+      z-index: 14;
+      color: rgba(235, 243, 255, 0.54);
+      font-size: 0.58rem;
+      line-height: 1.8;
+      letter-spacing: 0.18em;
+      text-align: right;
+      text-transform: uppercase;
+      pointer-events: none;
+      text-shadow: 0 0 24px #02030a;
+    }
+
+    .sky-readout b {
+      display: block;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 0.72rem;
+      font-weight: 760;
+      letter-spacing: 0.22em;
+    }
+
+    .object-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .sky-object {
+      --x: 50vw;
+      --y: 50vh;
+      --s: 68px;
+      --accent: #fff;
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      width: var(--s);
+      height: var(--s);
+      color: var(--ink);
+      text-decoration: none;
+      transform: translate(-50%, -50%);
+      transform-origin: center;
+      pointer-events: auto;
+      outline: none;
+      cursor: crosshair;
+      transition:
+        filter 220ms ease,
+        opacity 220ms ease,
+        transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .sky-object::before,
+    .sky-object::after {
+      position: absolute;
+      content: "";
+      pointer-events: none;
+    }
+
+    .sky-object::before {
+      inset: 17%;
+      border-radius: var(--shape, 50%);
+      border: 1px solid color-mix(in srgb, var(--accent) 62%, transparent);
+      background:
+        radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.95), transparent 6%),
+        radial-gradient(circle at 48% 45%, color-mix(in srgb, var(--accent) 84%, white 8%), transparent 18%),
+        radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 42%, transparent), transparent 54%);
+      box-shadow:
+        0 0 18px color-mix(in srgb, var(--accent) 50%, transparent),
+        0 0 54px color-mix(in srgb, var(--accent) 25%, transparent);
+    }
+
+    .sky-object::after {
+      inset: 0;
+      border: 1px dashed color-mix(in srgb, var(--accent) 42%, transparent);
+      border-radius: 50%;
+      opacity: 0.58;
+      transform: rotate(var(--orbit, 0deg)) scaleX(var(--orbit-x, 1));
+    }
+
+    .sky-object[data-kind="moon"]::before {
+      --shape: 50%;
+      clip-path: polygon(48% 4%, 76% 10%, 94% 36%, 88% 69%, 62% 93%, 28% 86%, 7% 56%, 15% 24%);
+    }
+
+    .sky-object[data-kind="station"]::before {
+      --shape: 8px;
+      inset: 25%;
+      transform: rotate(45deg);
+    }
+
+    .sky-object[data-kind="station"]::after {
+      border-style: solid;
+      transform: rotate(28deg) scaleX(1.55);
+    }
+
+    .sky-object[data-kind="beacon"]::before {
+      --shape: 3px;
+      inset: 35% 25%;
+      transform: rotate(-18deg);
+    }
+
+    .sky-object:hover,
+    .sky-object:focus-visible {
+      filter: brightness(1.28);
+      transform: translate(-50%, -50%) scale(1.12);
+      z-index: 5;
+    }
+
+    .sky-object:hover::after,
+    .sky-object:focus-visible::after {
+      opacity: 1;
+      box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.055);
+    }
+
+    .object-label {
+      position: absolute;
+      left: var(--label-left, 50%);
+      top: var(--label-top, calc(100% + 12px));
+      display: grid;
+      justify-items: var(--label-items, center);
+      gap: 5px;
+      min-width: max-content;
+      max-width: min(230px, 46vw);
+      color: rgba(248, 251, 255, 0.8);
+      text-align: var(--label-align, center);
+      text-shadow: 0 0 24px #02030a;
+      transform: translate(var(--label-tx, -50%), var(--label-ty, 0));
+      pointer-events: none;
+    }
+
+    .object-label strong,
+    .object-label span {
+      display: block;
+    }
+
+    .object-label strong {
+      font-size: 0.62rem;
+      font-weight: 780;
+      line-height: 1.2;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .object-label span {
+      color: rgba(235, 243, 255, 0.46);
+      font-size: 0.5rem;
+      font-weight: 680;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .text-nav {
+      position: fixed;
+      left: max(18px, env(safe-area-inset-left));
+      right: max(18px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 14;
+      display: grid;
+      grid-template-columns: minmax(220px, 390px) minmax(0, 1fr);
+      gap: 12px;
+      align-items: end;
+      pointer-events: none;
+    }
+
+    .caption,
+    .link-strip {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+    }
+
+    .caption {
+      padding: 14px 15px 13px;
+      pointer-events: auto;
+    }
+
+    .caption p {
+      margin: 0;
+      color: rgba(235, 243, 255, 0.58);
+      font-size: 0.61rem;
+      line-height: 1.58;
+      letter-spacing: 0.08em;
+    }
+
+    .caption b {
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 760;
+    }
+
+    .link-strip {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      overflow: hidden;
+      pointer-events: auto;
+    }
+
+    .strip-link {
+      min-width: 0;
+      padding: 13px 11px 12px;
+      border-right: 1px solid rgba(235, 243, 255, 0.13);
+      color: rgba(248, 251, 255, 0.74);
+      text-decoration: none;
+      transition:
+        background 180ms ease,
+        color 180ms ease;
+    }
+
+    .strip-link:last-child {
+      border-right: 0;
+    }
+
+    .strip-link:hover,
+    .strip-link:focus-visible {
+      background: rgba(255, 255, 255, 0.075);
+      color: #fff;
+      outline: none;
+    }
+
+    .strip-link b,
+    .strip-link span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .strip-link b {
+      font-size: 0.57rem;
+      font-weight: 780;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .strip-link span {
+      margin-top: 5px;
+      color: rgba(235, 243, 255, 0.4);
+      font-size: 0.48rem;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .skip-link {
+      position: fixed;
+      left: 14px;
+      top: 14px;
+      z-index: 30;
+      padding: 9px 11px;
+      background: #fff;
+      color: #02030a;
+      text-decoration: none;
+      transform: translateY(-150%);
+    }
+
+    .skip-link:focus {
+      transform: translateY(0);
+    }
+
+    @media (max-width: 900px) {
+      .brand {
+        right: 18px;
+      }
+
+      .brand p,
+      .sky-readout,
+      .caption {
+        display: none;
+      }
+
+      .text-nav {
+        grid-template-columns: 1fr;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+      }
+
+      .link-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .strip-link {
+        padding: 10px 9px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .brand h1 {
+        font-size: 0.72rem;
+        letter-spacing: 0.22em;
+      }
+
+      .object-label span {
+        display: none;
+      }
+
+      .link-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#text-navigation">Skip to text navigation</a>
+
+  <main class="site-shell" aria-labelledby="site-title">
+    <canvas id="sky-canvas" aria-hidden="true"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <header class="brand">
+      <h1 id="site-title">Travis Hinton</h1>
+      <p>A homepage as a long-duration sky: writing, work, identity, design, automation, and contact held as separate navigable objects beyond colliding galaxies.</p>
+    </header>
+
+    <div class="sky-readout" aria-hidden="true">
+      <b>Slow Sky Index</b>
+      Long merger animation<br />
+      Exterior objects active<br />
+      Six clear targets
+    </div>
+
+    <nav class="object-layer" id="object-layer" aria-label="Homepage sky navigation"></nav>
+
+    <section class="text-nav" id="text-navigation" aria-label="Site navigation">
+      <div class="caption">
+        <p><b>Every primary link is a sky object.</b> The field evolves slowly enough to remain in survey mode for a long time, with the final arrangement still leaving generous click space between destinations.</p>
+      </div>
+      <nav class="link-strip" id="link-strip" aria-label="Text links"></nav>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("sky-canvas");
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const objectLayer = document.getElementById("object-layer");
+      const linkStrip = document.getElementById("link-strip");
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+      const TAU = Math.PI * 2;
+      const DPR_CAP = 1.5;
+      const END_SECONDS = 2100;
+
+      const destinations = [
+        {
+          title: "Poetry",
+          code: "P-01",
+          href: "/poetry/",
+          region: "ember moon",
+          accent: "#ff9d76",
+          kind: "moon",
+          orbit: "-18deg",
+          orbitX: 1.32,
+          start: { x: 0.29, y: 0.42 },
+          end: { x: 0.16, y: 0.26 },
+          label: { left: "50%", top: "calc(100% + 14px)", tx: "-50%", ty: "0", align: "center", items: "center" },
+        },
+        {
+          title: "My Work",
+          code: "M-02",
+          href: "/work/",
+          region: "blue archive",
+          accent: "#a8d8ff",
+          kind: "planet",
+          orbit: "12deg",
+          orbitX: 1.6,
+          start: { x: 0.39, y: 0.48 },
+          end: { x: 0.47, y: 0.23 },
+          label: { left: "50%", top: "calc(100% + 14px)", tx: "-50%", ty: "0", align: "center", items: "center" },
+        },
+        {
+          title: "About Me",
+          code: "A-03",
+          href: "/about/",
+          region: "gold survey body",
+          accent: "#ffe08d",
+          kind: "moon",
+          orbit: "25deg",
+          orbitX: 1.18,
+          start: { x: 0.45, y: 0.39 },
+          end: { x: 0.78, y: 0.25 },
+          label: { left: "50%", top: "calc(100% + 14px)", tx: "-50%", ty: "0", align: "center", items: "center" },
+        },
+        {
+          title: "Web Design",
+          code: "W-04",
+          href: "/web-design/",
+          region: "violet station",
+          accent: "#b6a6ff",
+          kind: "station",
+          orbit: "-31deg",
+          orbitX: 1.5,
+          start: { x: 0.58, y: 0.49 },
+          end: { x: 0.24, y: 0.63 },
+          label: { left: "calc(100% + 16px)", top: "50%", tx: "0", ty: "-50%", align: "left", items: "start" },
+        },
+        {
+          title: "Business Automation",
+          code: "B-05",
+          href: "/business-automation/",
+          region: "green relay",
+          accent: "#93efc6",
+          kind: "beacon",
+          orbit: "8deg",
+          orbitX: 1.44,
+          start: { x: 0.56, y: 0.42 },
+          end: { x: 0.58, y: 0.72 },
+          label: { left: "50%", top: "calc(100% + 14px)", tx: "-50%", ty: "0", align: "center", items: "center" },
+        },
+        {
+          title: "Contact",
+          code: "C-06",
+          href: "/contact/",
+          region: "white signal",
+          accent: "#ffffff",
+          kind: "station",
+          orbit: "35deg",
+          orbitX: 1.28,
+          start: { x: 0.67, y: 0.48 },
+          end: { x: 0.87, y: 0.66 },
+          label: { left: "50%", top: "calc(100% + 14px)", tx: "-50%", ty: "0", align: "center", items: "center" },
+        },
+      ];
+
+      const state = {
+        dpr: 1,
+        w: 0,
+        h: 0,
+        cell: 5,
+        time: 0,
+        last: performance.now(),
+        raf: 0,
+        reduced: reducedMotion.matches,
+        anchors: [],
+        stars: [],
+        objects: [],
+        particles: [],
+      };
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const clamp01 = (v) => clamp(v, 0, 1);
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smoothstep = (t) => {
+        t = clamp01(t);
+        return t * t * (3 - 2 * t);
+      };
+
+      function hash(seed) {
+        const n = Math.sin(seed * 127.1) * 43758.5453123;
+        return n - Math.floor(n);
+      }
+
+      function rand(seed, min = 0, max = 1) {
+        return min + hash(seed) * (max - min);
+      }
+
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+        const w = Math.max(1, Math.floor(window.innerWidth * dpr));
+        const h = Math.max(1, Math.floor(window.innerHeight * dpr));
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        state.dpr = dpr;
+        state.w = w;
+        state.h = h;
+        state.cell = Math.max(2, Math.round((window.innerWidth < 720 ? 3.8 : 4.8) * dpr));
+      }
+
+      function initSky() {
+        state.stars = Array.from({ length: 820 }, (_, i) => ({
+          x: rand(i + 10),
+          y: rand(i + 200),
+          s: rand(i + 400) > 0.965 ? 2 : 1,
+          a: rand(i + 600, 0.14, 0.78),
+          hue: rand(i + 800) > 0.86 ? "warm" : rand(i + 810) > 0.58 ? "blue" : "white",
+          phase: rand(i + 1000, 0, TAU),
+        }));
+
+        state.objects = Array.from({ length: 72 }, (_, i) => ({
+          x: rand(i + 1300),
+          y: rand(i + 1500),
+          r: rand(i + 1700, 0.7, 2.8),
+          a: rand(i + 1900, 0.08, 0.34),
+          type: rand(i + 2100) > 0.72 ? "ring" : rand(i + 2200) > 0.55 ? "dust" : "stone",
+          phase: rand(i + 2300, 0, TAU),
+        }));
+
+        const particles = [];
+        for (let g = 0; g < 2; g++) {
+          const count = g === 0 ? 1350 : 980;
+          const cx = g === 0 ? 0.35 : 0.68;
+          const cy = g === 0 ? 0.48 : 0.42;
+          const arms = g === 0 ? 3 : 2;
+          for (let i = 0; i < count; i++) {
+            const seed = g * 5000 + i + 1;
+            const r = Math.pow(rand(seed), 0.62) * (g === 0 ? 0.24 : 0.18);
+            const arm = Math.floor(rand(seed + 20) * arms);
+            const theta = arm * TAU / arms + r * 22 + rand(seed + 40, -0.42, 0.42);
+            particles.push({
+              g,
+              cx,
+              cy,
+              r,
+              theta,
+              flat: g === 0 ? 0.56 : 0.62,
+              tilt: g === 0 ? -0.56 : 0.38,
+              heat: rand(seed + 60),
+              a: rand(seed + 80, 0.18, 0.84),
+            });
+          }
+        }
+
+        for (let i = 0; i < 520; i++) {
+          const u = i / 519;
+          particles.push({
+            g: 2,
+            x: 0.2 + u * 0.7 + Math.sin(u * TAU * 1.5) * 0.04 + rand(i + 7000, -0.025, 0.025),
+            y: 0.59 - Math.sin(u * Math.PI) * 0.25 + rand(i + 7200, -0.035, 0.035),
+            heat: rand(i + 7400),
+            a: rand(i + 7600, 0.12, 0.48),
+          });
+        }
+        state.particles = particles;
+      }
+
+      function px(x) {
+        return x * state.w;
+      }
+
+      function py(y) {
+        return y * state.h;
+      }
+
+      function drawPixel(x, y, alpha, size, color) {
+        if (alpha <= 0.01) return;
+        ctx.globalAlpha = clamp01(alpha);
+        ctx.fillStyle = color;
+        const s = Math.max(1, Math.round(size));
+        ctx.fillRect(Math.round(x), Math.round(y), s, s);
+      }
+
+      function drawBackground() {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#02030a";
+        ctx.fillRect(0, 0, state.w, state.h);
+
+        for (const star of state.stars) {
+          const twinkle = state.reduced ? 1 : 0.84 + 0.16 * Math.sin(state.time * 0.26 + star.phase);
+          const color = star.hue === "warm" ? "rgb(255, 196, 145)" : star.hue === "blue" ? "rgb(170, 211, 255)" : "rgb(245, 249, 255)";
+          drawPixel(px(star.x), py(star.y), star.a * twinkle, state.cell * star.s * 0.42, color);
+        }
+
+        for (const object of state.objects) {
+          const driftX = Math.sin(state.time * 0.018 + object.phase) * 0.005;
+          const driftY = Math.cos(state.time * 0.013 + object.phase) * 0.004;
+          const x = px(clamp01(object.x + driftX));
+          const y = py(clamp01(object.y + driftY));
+          if (object.type === "ring") {
+            ctx.globalAlpha = object.a;
+            ctx.strokeStyle = "rgba(202, 221, 255, 0.58)";
+            ctx.lineWidth = Math.max(1, state.dpr);
+            ctx.beginPath();
+            ctx.ellipse(x, y, object.r * state.cell * 2.1, object.r * state.cell * 0.82, object.phase, 0, TAU);
+            ctx.stroke();
+          } else {
+            drawPixel(x, y, object.a, state.cell * object.r * 0.55, object.type === "dust" ? "rgb(156, 188, 218)" : "rgb(216, 224, 235)");
+          }
+        }
+      }
+
+      function drawGalaxies() {
+        const merger = smoothstep(state.time / END_SECONDS);
+        const spin = state.time * 0.018;
+        for (const p of state.particles) {
+          if (p.g === 2) {
+            const pull = Math.sin((p.x + p.y) * 9 + state.time * 0.024) * 0.012 * merger;
+            drawPixel(px(p.x + pull), py(p.y - pull * 0.55), p.a * 0.7, state.cell * 0.5, p.heat > 0.82 ? "rgb(255, 144, 104)" : "rgb(154, 190, 228)");
+            continue;
+          }
+
+          const targetX = p.g === 0 ? 0.43 : 0.58;
+          const targetY = p.g === 0 ? 0.5 : 0.49;
+          const cx = lerp(p.cx, targetX, merger * 0.64);
+          const cy = lerp(p.cy, targetY, merger * 0.64);
+          const theta = p.theta + spin * (p.g === 0 ? 1 : -1.25);
+          const ripple = Math.sin(theta * 3 + state.time * 0.031) * 0.012 * merger;
+          const lx = Math.cos(theta) * (p.r + ripple);
+          const ly = Math.sin(theta) * (p.r + ripple) * p.flat;
+          const ca = Math.cos(p.tilt);
+          const sa = Math.sin(p.tilt);
+          const x = cx + lx * ca - ly * sa;
+          const y = cy + lx * sa + ly * ca;
+          const hot = p.heat > 0.94;
+          const color = p.g === 0
+            ? hot ? "rgb(255, 154, 109)" : "rgb(159, 191, 229)"
+            : hot ? "rgb(255, 225, 148)" : "rgb(186, 211, 242)";
+          drawPixel(px(x), py(y), p.a, state.cell * (hot ? 0.72 : 0.46), color);
+        }
+
+        const cores = [
+          { x: lerp(0.35, 0.43, merger * 0.64), y: lerp(0.48, 0.5, merger * 0.64), color: "rgb(255, 250, 236)", size: 3.1 },
+          { x: lerp(0.68, 0.58, merger * 0.64), y: lerp(0.42, 0.49, merger * 0.64), color: "rgb(214, 233, 255)", size: 2.5 },
+        ];
+        for (const core of cores) {
+          for (let i = 8; i >= 1; i--) {
+            drawPixel(px(core.x), py(core.y), 0.05 * i, state.cell * core.size * i * 0.32, core.color);
+          }
+        }
+      }
+
+      function renderNavigation() {
+        objectLayer.innerHTML = "";
+        linkStrip.innerHTML = "";
+        state.anchors = destinations.map((destination) => {
+          const a = document.createElement("a");
+          a.className = "sky-object";
+          a.href = destination.href;
+          a.dataset.kind = destination.kind;
+          a.style.setProperty("--accent", destination.accent);
+          a.style.setProperty("--orbit", destination.orbit);
+          a.style.setProperty("--orbit-x", destination.orbitX);
+          a.style.setProperty("--label-left", destination.label.left);
+          a.style.setProperty("--label-top", destination.label.top);
+          a.style.setProperty("--label-tx", destination.label.tx);
+          a.style.setProperty("--label-ty", destination.label.ty);
+          a.style.setProperty("--label-align", destination.label.align);
+          a.style.setProperty("--label-items", destination.label.items);
+          a.setAttribute("aria-label", `${destination.title}: ${destination.region}`);
+
+          const label = document.createElement("span");
+          label.className = "object-label";
+          label.innerHTML = `<strong>${destination.title}</strong><span>${destination.region}</span>`;
+          a.append(label);
+          objectLayer.append(a);
+
+          const stripLink = document.createElement("a");
+          stripLink.className = "strip-link";
+          stripLink.href = destination.href;
+          stripLink.innerHTML = `<b>${destination.title}</b><span>${destination.code} / ${destination.region}</span>`;
+          linkStrip.append(stripLink);
+
+          return { destination, el: a };
+        });
+      }
+
+      function updateNavigation() {
+        const progress = state.reduced ? 1 : smoothstep(state.time / END_SECONDS);
+        const mobile = window.innerWidth < 560;
+        const bottomReserve = window.innerWidth < 900 ? 150 : 108;
+        const marginX = mobile ? 58 : 72;
+        const marginTop = mobile ? 74 : 86;
+        for (const anchor of state.anchors) {
+          const destination = anchor.destination;
+          const orbital = Math.sin(state.time * 0.026 + destination.code.charCodeAt(0)) * (1 - progress) * 0.018;
+          const x = lerp(destination.start.x, destination.end.x, progress) + orbital;
+          const y = lerp(destination.start.y, destination.end.y, progress) + Math.cos(state.time * 0.021 + destination.code.charCodeAt(2)) * (1 - progress) * 0.014;
+          const sx = clamp(px(x) / state.dpr, marginX, window.innerWidth - marginX);
+          const sy = clamp(py(y) / state.dpr, marginTop, window.innerHeight - bottomReserve);
+          const size = mobile ? 52 : clamp(58 + progress * 10, 58, 72);
+          anchor.el.style.setProperty("--x", `${sx}px`);
+          anchor.el.style.setProperty("--y", `${sy}px`);
+          anchor.el.style.setProperty("--s", `${size}px`);
+          anchor.el.style.opacity = `${0.9 + progress * 0.1}`;
+        }
+      }
+
+      function draw(now) {
+        resize();
+        const elapsed = Math.min(120, now - state.last);
+        state.last = now;
+        if (!state.reduced && !document.hidden) {
+          state.time = Math.min(END_SECONDS, state.time + elapsed / 1000);
+        }
+
+        drawBackground();
+        drawGalaxies();
+        updateNavigation();
+        state.raf = requestAnimationFrame(draw);
+      }
+
+      window.addEventListener("resize", resize, { passive: true });
+      reducedMotion.addEventListener?.("change", () => {
+        state.reduced = reducedMotion.matches;
+      });
+
+      resize();
+      initSky();
+      renderNavigation();
+      state.raf = requestAnimationFrame(draw);
+    })();
+  </script>
+</body>
+</html>
