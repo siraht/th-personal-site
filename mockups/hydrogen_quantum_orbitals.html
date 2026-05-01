@@ -228,6 +228,59 @@
       background: linear-gradient(90deg, var(--cyan), var(--gold), var(--rose));
     }
 
+    .weight-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .weight {
+      display: grid;
+      gap: 6px;
+      padding: 9px;
+      border: 1px solid rgba(246, 240, 230, 0.13);
+      background: rgba(246, 240, 230, 0.045);
+    }
+
+    .weight span {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--quiet);
+      font-size: 0.62rem;
+      font-weight: 760;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .weight b,
+    .weight em {
+      font-style: normal;
+      font-weight: 760;
+    }
+
+    .weight b {
+      color: var(--ink);
+    }
+
+    .weight-bar {
+      height: 3px;
+      overflow: hidden;
+      background: rgba(246, 240, 230, 0.12);
+    }
+
+    .weight-bar i {
+      display: block;
+      width: calc(var(--weight, 0) * 100%);
+      height: 100%;
+      background: var(--cyan);
+    }
+
+    .weight.beta .weight-bar i {
+      background: var(--gold);
+    }
+
     .toolbar {
       display: grid;
       grid-template-columns: 1fr 1fr 46px;
@@ -467,6 +520,36 @@
       line-height: 1.55;
     }
 
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .fact {
+      min-height: 54px;
+      padding: 8px;
+      border: 1px solid rgba(246, 240, 230, 0.12);
+      background: rgba(7, 9, 13, 0.34);
+    }
+
+    .fact span {
+      display: block;
+      color: var(--quiet);
+      font-size: 0.58rem;
+      font-weight: 760;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .fact strong {
+      display: block;
+      margin-top: 5px;
+      color: var(--ink);
+      font-size: 0.86rem;
+      line-height: 1.1;
+    }
+
     .mobile-note {
       display: none;
     }
@@ -525,9 +608,17 @@
       }
     }
 
+    @media (min-width: 981px) {
+      .quantum-map {
+        right: max(428px, calc(env(safe-area-inset-right) + 428px));
+      }
+    }
+
     @media (max-width: 560px) {
       .toolbar,
       .big-state,
+      .weight-grid,
+      .fact-grid,
       .spin-control,
       .state-line {
         grid-template-columns: 1fr;
@@ -582,6 +673,16 @@
           <button class="command" id="apply-state" type="button">Transition to sliders</button>
           <button class="command" id="next-state" type="button" aria-label="Next state">Next</button>
         </div>
+        <div class="weight-grid" aria-label="Superposition weights">
+          <div class="weight alpha" id="alpha-weight">
+            <span><b>&alpha;<sup>2</sup></b><em id="alpha-value">1.00</em></span>
+            <div class="weight-bar"><i></i></div>
+          </div>
+          <div class="weight beta" id="beta-weight">
+            <span><b>&beta;<sup>2</sup></b><em id="beta-value">0.00</em></span>
+            <div class="weight-bar"><i></i></div>
+          </div>
+        </div>
         <div class="rows">
           <div class="control-row">
             <label for="n-slider">n</label>
@@ -632,7 +733,9 @@
         <p>
           Here <code>m</code> is the z-axis orbital angular momentum projection:
           <code>L<sub>z</sub>Y<sub>l</sub><sup>m</sup> = m&hbar;Y<sub>l</sub><sup>m</sup></code>.
-          Spin <code>m_s</code> is separate, so this non-relativistic spatial orbital does not change when spin flips.
+          Distances are in Bohr-radius units, <code>a<sub>0</sub> = 1</code>.
+          Electron spin has fixed <code>s = 1/2</code>; the shown spin control is the projection
+          <code>m_s = +/-1/2</code>, which does not change this non-relativistic spatial orbital.
         </p>
         <p>
           References:
@@ -665,22 +768,27 @@
         <div class="microcopy" id="state-explain">
           n sets the shell and energy for hydrogen. l sets orbital angular momentum and angular nodes. m sets the quantized orientation around the chosen z-axis.
         </div>
+        <div class="fact-grid" aria-label="Selected state facts">
+          <div class="fact"><span>energy</span><strong id="fact-energy">-13.60 eV</strong></div>
+          <div class="fact"><span>nodes</span><strong id="fact-nodes">0 radial / 0 angular</strong></div>
+          <div class="fact"><span>orbital count</span><strong id="fact-degeneracy">n² = 1</strong></div>
+          <div class="fact"><span>|m| effect</span><strong id="fact-m">phase only</strong></div>
+        </div>
       </div>
     </section>
   </main>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-      }
-    }
-  </script>
-
   <script type="module">
-    import * as THREE from "three";
-    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+    let THREE = null;
+    let OrbitControls = null;
+
+    try {
+      THREE = await import("https://unpkg.com/three@0.160.0/build/three.module.js");
+      ({ OrbitControls } = await import("https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js"));
+    } catch (error) {
+      THREE = null;
+      OrbitControls = null;
+    }
 
     const canvas = document.querySelector("#orbital-canvas");
     let renderer = null;
@@ -692,9 +800,13 @@
     let geometry = null;
     let material = null;
     let fallbackContext = null;
-    let useWebGL = true;
+    let useWebGL = Boolean(THREE && OrbitControls);
 
     try {
+      if (!useWebGL) {
+        throw new Error("Three.js unavailable; using Canvas 2D renderer.");
+      }
+
       renderer = new THREE.WebGLRenderer({
         canvas,
         antialias: true,
@@ -774,6 +886,11 @@
     let spin = 0.5;
     let needsCloudUpdate = true;
     let lastUpdate = 0;
+    let fallbackYaw = 0.38;
+    let fallbackPitch = -0.16;
+    let fallbackDragging = false;
+    let fallbackPointerX = 0;
+    let fallbackPointerY = 0;
 
     const factorial = [1];
     for (let i = 1; i <= 24; i += 1) factorial[i] = factorial[i - 1] * i;
@@ -784,8 +901,14 @@
     const positions = new Float32Array(pointCount * 3);
     const colors = new Float32Array(pointCount * 3);
     const densities = new Float32Array(pointCount);
+    const radii = new Float32Array(pointCount);
+    const cosThetas = new Float32Array(pointCount);
+    const phis = new Float32Array(pointCount);
+    const waveRe = new Float32Array(pointCount);
+    const waveIm = new Float32Array(pointCount);
 
     seedPoints(physicalPositions, pointCount, rMax);
+    cacheSphericalCoordinates();
 
     if (useWebGL) {
       geometry = new THREE.BufferGeometry();
@@ -830,10 +953,18 @@
       braKet: document.querySelector("#bra-ket"),
       mixCopy: document.querySelector("#mix-copy"),
       mixMeter: document.querySelector("#mix-meter"),
+      alphaWeight: document.querySelector("#alpha-weight"),
+      betaWeight: document.querySelector("#beta-weight"),
+      alphaValue: document.querySelector("#alpha-value"),
+      betaValue: document.querySelector("#beta-value"),
       boxN: document.querySelector("#box-n"),
       boxL: document.querySelector("#box-l"),
       boxM: document.querySelector("#box-m"),
-      explain: document.querySelector("#state-explain")
+      explain: document.querySelector("#state-explain"),
+      factEnergy: document.querySelector("#fact-energy"),
+      factNodes: document.querySelector("#fact-nodes"),
+      factDegeneracy: document.querySelector("#fact-degeneracy"),
+      factM: document.querySelector("#fact-m")
     };
 
     drawQuantumMap();
@@ -880,6 +1011,29 @@
 
     spinUp.addEventListener("click", () => setSpin(0.5));
     spinDown.addEventListener("click", () => setSpin(-0.5));
+
+    if (!useWebGL) {
+      canvas.addEventListener("pointerdown", (event) => {
+        fallbackDragging = true;
+        fallbackPointerX = event.clientX;
+        fallbackPointerY = event.clientY;
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener("pointermove", (event) => {
+        if (!fallbackDragging) return;
+        const dx = event.clientX - fallbackPointerX;
+        const dy = event.clientY - fallbackPointerY;
+        fallbackPointerX = event.clientX;
+        fallbackPointerY = event.clientY;
+        fallbackYaw += dx * 0.006;
+        fallbackPitch = Math.max(-1.15, Math.min(1.15, fallbackPitch + dy * 0.004));
+        needsCloudUpdate = true;
+      });
+      canvas.addEventListener("pointerup", (event) => {
+        fallbackDragging = false;
+        canvas.releasePointerCapture(event.pointerId);
+      });
+    }
 
     window.addEventListener("resize", () => {
       if (useWebGL) {
@@ -977,6 +1131,18 @@
       }
     }
 
+    function cacheSphericalCoordinates() {
+      for (let i = 0; i < pointCount; i += 1) {
+        const x = physicalPositions[i * 3];
+        const y = physicalPositions[i * 3 + 1];
+        const z = physicalPositions[i * 3 + 2];
+        const r = Math.sqrt(x * x + y * y + z * z);
+        radii[i] = r;
+        cosThetas[i] = r < 1e-10 ? 1 : Math.max(-1, Math.min(1, z / r));
+        phis[i] = Math.atan2(y, x);
+      }
+    }
+
     function updateCloud(time) {
       const t = smoothstep(Math.max(0, Math.min(1, mix)));
       const alpha = Math.cos(t * Math.PI * 0.5);
@@ -992,12 +1158,14 @@
         const x = physicalPositions[i * 3];
         const y = physicalPositions[i * 3 + 1];
         const z = physicalPositions[i * 3 + 2];
-        const a = wavefunction(fromState, x, y, z);
-        const b = wavefunction(toState, x, y, z);
+        const a = wavefunctionSpherical(fromState, radii[i], cosThetas[i], phis[i]);
+        const b = wavefunctionSpherical(toState, radii[i], cosThetas[i], phis[i]);
         const re = alpha * a.re + beta * b.re;
         const im = alpha * a.im + beta * b.im;
         const density = re * re + im * im;
         densities[i] = density;
+        waveRe[i] = re;
+        waveIm[i] = im;
         if (density > maxDensity) maxDensity = density;
 
         positions[i * 3] = x * scale;
@@ -1021,14 +1189,10 @@
           continue;
         }
 
-        const x = physicalPositions[i * 3];
-        const y = physicalPositions[i * 3 + 1];
-        const z = physicalPositions[i * 3 + 2];
-        const psi = blendedWaveAtPoint(x, y, z, alpha, beta);
-        const phase = Math.atan2(psi.im, psi.re);
+        const phase = Math.atan2(waveIm[i], waveRe[i]);
         const hue = phaseMode
           ? positiveModulo(phase / (2 * Math.PI) + phaseSpin + 0.08 * Math.sin(time * 0.0003), 1)
-          : psi.re >= 0 ? 0.47 : 0.11;
+          : waveRe[i] >= 0 ? 0.47 : 0.11;
         const rgb = hslToRgb(hue, phaseMode ? 0.82 : 0.72, 0.56);
         const glow = intensity * (phaseMode ? 1 : 0.9);
 
@@ -1064,8 +1228,8 @@
       const centerX = width * 0.5;
       const centerY = height * 0.48;
       const unit = Math.min(width, height) * 0.26;
-      const yRot = 0.38 + time * 0.000045;
-      const xRot = -0.16 + Math.sin(time * 0.00018) * 0.08;
+      const yRot = fallbackYaw + (fallbackDragging ? 0 : time * 0.000045);
+      const xRot = fallbackPitch + Math.sin(time * 0.00018) * 0.08;
       const cosY = Math.cos(yRot);
       const sinY = Math.sin(yRot);
       const cosX = Math.cos(xRot);
@@ -1113,27 +1277,9 @@
       ctx.fill();
     }
 
-    function blendedWaveAtPoint(x, y, z, alpha, beta) {
-      const a = wavefunction(fromState, x, y, z);
-      const b = wavefunction(toState, x, y, z);
-      return {
-        re: alpha * a.re + beta * b.re,
-        im: alpha * a.im + beta * b.im
-      };
-    }
-
-    function wavefunction(state, x, y, z) {
-      const r = Math.sqrt(x * x + y * y + z * z);
-      if (r < 1e-10) {
-        const radial = radialWave(state.n, state.l, 0);
-        const angular = sphericalHarmonic(state.l, state.m, 0, 0);
-        return { re: radial * angular.re, im: radial * angular.im };
-      }
-
-      const theta = Math.acos(Math.max(-1, Math.min(1, z / r)));
-      const phi = Math.atan2(y, x);
+    function wavefunctionSpherical(state, r, cosTheta, phi) {
       const radial = radialWave(state.n, state.l, r);
-      const angular = sphericalHarmonic(state.l, state.m, theta, phi);
+      const angular = sphericalHarmonicFromCos(state.l, state.m, cosTheta, phi);
       return {
         re: radial * angular.re,
         im: radial * angular.im
@@ -1163,14 +1309,14 @@
       return current;
     }
 
-    function sphericalHarmonic(l, m, theta, phi) {
+    function sphericalHarmonicFromCos(l, m, cosTheta, phi) {
       if (m < 0) {
-        const positive = sphericalHarmonic(l, -m, theta, phi);
+        const positive = sphericalHarmonicFromCos(l, -m, cosTheta, phi);
         const sign = Math.abs(m) % 2 === 0 ? 1 : -1;
         return { re: sign * positive.re, im: -sign * positive.im };
       }
 
-      const p = associatedLegendre(l, m, Math.cos(theta));
+      const p = associatedLegendre(l, m, cosTheta);
       const norm = Math.sqrt(((2 * l + 1) / (4 * Math.PI)) * factorial[l - m] / factorial[l + m]);
       const phase = m * phi;
       const amp = norm * p;
@@ -1286,12 +1432,22 @@
       const alpha = Math.cos(smoothstep(t) * Math.PI * 0.5);
       const beta = Math.sin(smoothstep(t) * Math.PI * 0.5);
       const shown = t < 0.5 ? fromState : toState;
+      const alphaProbability = alpha * alpha;
+      const betaProbability = beta * beta;
       ui.braKet.innerHTML = `${ket(fromState)} &rarr; ${ket(toState)}`;
-      ui.mixCopy.innerHTML = `&alpha; = ${alpha.toFixed(2)}, &beta; = ${beta.toFixed(2)}, spin label m_s = ${spin > 0 ? "+1/2" : "-1/2"}.`;
+      ui.mixCopy.innerHTML = `&alpha; = ${alpha.toFixed(2)}, &beta; = ${beta.toFixed(2)}, with &alpha;<sup>2</sup> + &beta;<sup>2</sup> = 1. m_s = ${spin > 0 ? "+1/2" : "-1/2"}.`;
+      ui.alphaWeight.style.setProperty("--weight", alphaProbability.toFixed(4));
+      ui.betaWeight.style.setProperty("--weight", betaProbability.toFixed(4));
+      ui.alphaValue.textContent = alphaProbability.toFixed(2);
+      ui.betaValue.textContent = betaProbability.toFixed(2);
       ui.boxN.textContent = shown.n;
       ui.boxL.textContent = shown.l;
       ui.boxM.textContent = shown.m;
       ui.explain.textContent = explanationFor(shown);
+      ui.factEnergy.textContent = `${(-13.605693 / (shown.n * shown.n)).toFixed(3)} eV`;
+      ui.factNodes.textContent = `${shown.n - shown.l - 1} radial / ${shown.l} angular`;
+      ui.factDegeneracy.textContent = `n^2 = ${shown.n * shown.n}`;
+      ui.factM.textContent = shown.m === 0 ? "real phase" : "phase winding";
       markActiveDot(shown);
     }
 
@@ -1299,7 +1455,10 @@
       const subshells = ["s", "p", "d", "f", "g"];
       const radialNodes = state.n - state.l - 1;
       const angularNodes = state.l;
-      return `${state.n}${subshells[state.l]} with m = ${state.m}: ${radialNodes} radial node${radialNodes === 1 ? "" : "s"}, ${angularNodes} angular node${angularNodes === 1 ? "" : "s"}. m chooses the quantized z-axis projection, not a new shell.`;
+      const mNote = state.m === 0
+        ? "m = 0 has no azimuthal phase winding."
+        : `m = ${state.m} winds the complex phase ${Math.abs(state.m)} time${Math.abs(state.m) === 1 ? "" : "s"} around the z-axis; |m| shapes the density, while the sign reverses phase direction.`;
+      return `${state.n}${subshells[state.l]}: ${radialNodes} radial node${radialNodes === 1 ? "" : "s"}, ${angularNodes} angular node${angularNodes === 1 ? "" : "s"}. ${mNote}`;
     }
 
     function setSpin(value) {
