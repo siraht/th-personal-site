@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#07090d" />
-  <title>Hydrogen Quantum Orbitals - State Transition Mockup</title>
+  <title>Hydrogen Quantum Orbitals - Superposition Mockup</title>
   <style>
     :root {
       color-scheme: dark;
@@ -655,10 +655,10 @@
 
     <section class="readout" aria-label="Current hydrogen orbital state">
       <p class="eyebrow">Hydrogen eigenstate explorer</p>
-      <h1>Orbital transitions</h1>
+      <h1>Orbital<br />states</h1>
       <div class="state-line">
         <span class="state-pill" id="bra-ket">|100&gt; &rarr; |200&gt;</span>
-        <span id="mix-copy">&alpha;|nlm&gt; + &beta;|n'l'm'&gt;, with normalized transition weights.</span>
+        <span id="mix-copy">&alpha;|nlm&gt; + &beta;|n'l'm'&gt;, with normalized superposition weights.</span>
       </div>
     </section>
 
@@ -670,8 +670,8 @@
         </div>
         <div class="toolbar">
           <button class="command primary" id="play-toggle" type="button">Pause sequence</button>
-          <button class="command" id="apply-state" type="button">Transition to sliders</button>
-          <button class="command" id="next-state" type="button" aria-label="Next state">Next</button>
+          <button class="command" id="apply-state" type="button">Blend to sliders</button>
+          <button class="command" id="next-state" type="button" aria-label="Next blend">Next</button>
         </div>
         <div class="weight-grid" aria-label="Superposition weights">
           <div class="weight alpha" id="alpha-weight">
@@ -715,6 +715,10 @@
           <input id="phase-toggle" type="checkbox" checked />
         </div>
         <div class="toggle-row">
+          <label for="real-toggle">Use real orbital basis</label>
+          <input id="real-toggle" type="checkbox" />
+        </div>
+        <div class="toggle-row">
           <label for="fit-toggle">Fit radial scale to shell</label>
           <input id="fit-toggle" type="checkbox" checked />
         </div>
@@ -736,6 +740,7 @@
           Distances are in Bohr-radius units, <code>a<sub>0</sub> = 1</code>.
           Electron spin has fixed <code>s = 1/2</code>; the shown spin control is the projection
           <code>m_s = +/-1/2</code>, which does not change this non-relativistic spatial orbital.
+          Dots are fixed sample probes colored by <code>|&psi;|<sup>2</sup></code>; they are not exact random detector hits.
         </p>
         <p>
           References:
@@ -773,6 +778,7 @@
           <div class="fact"><span>nodes</span><strong id="fact-nodes">0 radial / 0 angular</strong></div>
           <div class="fact"><span>orbital count</span><strong id="fact-degeneracy">n² = 1</strong></div>
           <div class="fact"><span>|m| effect</span><strong id="fact-m">phase only</strong></div>
+          <div class="fact"><span>dipole rule</span><strong id="fact-rule">checking</strong></div>
         </div>
       </div>
     </section>
@@ -936,6 +942,7 @@
     const speedSlider = document.querySelector("#speed-slider");
     const cutoffSlider = document.querySelector("#cutoff-slider");
     const phaseToggle = document.querySelector("#phase-toggle");
+    const realToggle = document.querySelector("#real-toggle");
     const fitToggle = document.querySelector("#fit-toggle");
     const playToggle = document.querySelector("#play-toggle");
     const nextState = document.querySelector("#next-state");
@@ -964,7 +971,8 @@
       factEnergy: document.querySelector("#fact-energy"),
       factNodes: document.querySelector("#fact-nodes"),
       factDegeneracy: document.querySelector("#fact-degeneracy"),
-      factM: document.querySelector("#fact-m")
+      factM: document.querySelector("#fact-m"),
+      factRule: document.querySelector("#fact-rule")
     };
 
     drawQuantumMap();
@@ -991,6 +999,10 @@
     });
     phaseToggle.addEventListener("change", () => {
       needsCloudUpdate = true;
+    });
+    realToggle.addEventListener("change", () => {
+      needsCloudUpdate = true;
+      updateText();
     });
     fitToggle.addEventListener("change", () => {
       needsCloudUpdate = true;
@@ -1175,8 +1187,6 @@
 
       const cutoff = Number(cutoffSlider.value) * maxDensity;
       const denom = Math.max(maxDensity - cutoff, 1e-18);
-      const phaseSpin = spin > 0 ? 0.0 : 0.5;
-
       for (let i = 0; i < pointCount; i += 1) {
         const density = densities[i];
         let intensity = density <= cutoff ? 0 : (density - cutoff) / denom;
@@ -1191,7 +1201,7 @@
 
         const phase = Math.atan2(waveIm[i], waveRe[i]);
         const hue = phaseMode
-          ? positiveModulo(phase / (2 * Math.PI) + phaseSpin + 0.08 * Math.sin(time * 0.0003), 1)
+          ? positiveModulo(phase / (2 * Math.PI) + 0.08 * Math.sin(time * 0.0003), 1)
           : waveRe[i] >= 0 ? 0.47 : 0.11;
         const rgb = hslToRgb(hue, phaseMode ? 0.82 : 0.72, 0.56);
         const glow = intensity * (phaseMode ? 1 : 0.9);
@@ -1279,7 +1289,9 @@
 
     function wavefunctionSpherical(state, r, cosTheta, phi) {
       const radial = radialWave(state.n, state.l, r);
-      const angular = sphericalHarmonicFromCos(state.l, state.m, cosTheta, phi);
+      const angular = realToggle.checked
+        ? realSphericalHarmonicFromCos(state.l, state.m, cosTheta, phi)
+        : sphericalHarmonicFromCos(state.l, state.m, cosTheta, phi);
       return {
         re: radial * angular.re,
         im: radial * angular.im
@@ -1324,6 +1336,14 @@
         re: amp * Math.cos(phase),
         im: amp * Math.sin(phase)
       };
+    }
+
+    function realSphericalHarmonicFromCos(l, m, cosTheta, phi) {
+      if (m === 0) return sphericalHarmonicFromCos(l, 0, cosTheta, phi);
+
+      const positive = sphericalHarmonicFromCos(l, Math.abs(m), cosTheta, phi);
+      const value = Math.SQRT2 * (m > 0 ? positive.re : positive.im);
+      return { re: value, im: 0 };
     }
 
     function associatedLegendre(l, m, x) {
@@ -1447,7 +1467,10 @@
       ui.factEnergy.textContent = `${(-13.605693 / (shown.n * shown.n)).toFixed(3)} eV`;
       ui.factNodes.textContent = `${shown.n - shown.l - 1} radial / ${shown.l} angular`;
       ui.factDegeneracy.textContent = `n^2 = ${shown.n * shown.n}`;
-      ui.factM.textContent = shown.m === 0 ? "real phase" : "phase winding";
+      ui.factM.textContent = realToggle.checked
+        ? shown.m === 0 ? "no azimuthal node" : "real angular lobes"
+        : shown.m === 0 ? "real phase" : "phase winding";
+      ui.factRule.textContent = dipoleRuleLabel(fromState, toState);
       markActiveDot(shown);
     }
 
@@ -1455,10 +1478,27 @@
       const subshells = ["s", "p", "d", "f", "g"];
       const radialNodes = state.n - state.l - 1;
       const angularNodes = state.l;
-      const mNote = state.m === 0
+      const mNote = realToggle.checked
+        ? state.m === 0
+          ? "The real-basis view is identical to the complex m = 0 state."
+          : `Real-basis mode shows a standing-wave combination of m = +${Math.abs(state.m)} and m = -${Math.abs(state.m)}, matching familiar chemistry lobe drawings.`
+        : state.m === 0
         ? "m = 0 has no azimuthal phase winding."
         : `m = ${state.m} winds the complex phase ${Math.abs(state.m)} time${Math.abs(state.m) === 1 ? "" : "s"} around the z-axis; |m| shapes the density, while the sign reverses phase direction.`;
       return `${state.n}${subshells[state.l]}: ${radialNodes} radial node${radialNodes === 1 ? "" : "s"}, ${angularNodes} angular node${angularNodes === 1 ? "" : "s"}. ${mNote}`;
+    }
+
+    function dipoleRuleLabel(start, end) {
+      const deltaL = end.l - start.l;
+      const deltaM = end.m - start.m;
+      const spinUnchanged = true;
+      const allowed = Math.abs(deltaL) === 1 && Math.abs(deltaM) <= 1 && spinUnchanged;
+      const detail = `dL ${formatSigned(deltaL)}, dM ${formatSigned(deltaM)}`;
+      return allowed ? `E1 allowed (${detail})` : `not E1 (${detail})`;
+    }
+
+    function formatSigned(value) {
+      return value > 0 ? `+${value}` : `${value}`;
     }
 
     function setSpin(value) {
