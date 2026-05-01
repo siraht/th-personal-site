@@ -1,0 +1,1401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#07090d" />
+  <title>Hydrogen Quantum Orbitals - State Transition Mockup</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07090d;
+      --ink: #f6f0e6;
+      --muted: rgba(246, 240, 230, 0.68);
+      --quiet: rgba(246, 240, 230, 0.46);
+      --line: rgba(246, 240, 230, 0.16);
+      --panel: rgba(10, 13, 18, 0.72);
+      --panel-solid: #10141b;
+      --cyan: #49e2cf;
+      --gold: #f2bd58;
+      --rose: #ff6b87;
+      --green: #a5d26b;
+      --blue: #7ca7ff;
+      --shadow: rgba(0, 0, 0, 0.46);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family:
+        "IBM Plex Mono",
+        "Azeret Mono",
+        "SFMono-Regular",
+        Consolas,
+        monospace;
+    }
+
+    body {
+      min-height: 100svh;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .app {
+      position: relative;
+      min-height: 100svh;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 50% 46%, rgba(73, 226, 207, 0.12), transparent 18%),
+        radial-gradient(circle at 66% 40%, rgba(242, 189, 88, 0.08), transparent 28%),
+        linear-gradient(135deg, rgba(124, 167, 255, 0.11), transparent 35%),
+        #07090d;
+    }
+
+    #orbital-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    .field-lines,
+    .vignette,
+    .grain {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .field-lines {
+      opacity: 0.24;
+      background-image:
+        linear-gradient(rgba(246, 240, 230, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(246, 240, 230, 0.032) 1px, transparent 1px);
+      background-size: 54px 54px;
+      mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 76%);
+    }
+
+    .grain {
+      opacity: 0.22;
+      background-image:
+        repeating-radial-gradient(circle at 42% 51%, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 5px);
+      mix-blend-mode: soft-light;
+    }
+
+    .vignette {
+      z-index: 3;
+      background:
+        radial-gradient(circle at 50% 48%, transparent 0%, transparent 60%, rgba(0, 0, 0, 0.76) 100%),
+        linear-gradient(180deg, rgba(7, 9, 13, 0.58), transparent 18%, transparent 72%, rgba(7, 9, 13, 0.68));
+    }
+
+    .readout {
+      position: fixed;
+      top: max(18px, env(safe-area-inset-top));
+      left: max(18px, env(safe-area-inset-left));
+      z-index: 8;
+      width: min(520px, calc(100vw - 36px));
+      display: grid;
+      gap: 12px;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--gold);
+      font-size: 0.68rem;
+      font-weight: 760;
+      letter-spacing: 0.22em;
+      line-height: 1.2;
+      text-transform: uppercase;
+      text-shadow: 0 2px 28px #000;
+    }
+
+    h1 {
+      max-width: 13ch;
+      margin: 0;
+      font-family:
+        Georgia,
+        "Times New Roman",
+        serif;
+      font-size: clamp(3rem, 9vw, 8rem);
+      font-weight: 500;
+      letter-spacing: 0;
+      line-height: 0.84;
+      text-shadow: 0 18px 60px rgba(0, 0, 0, 0.62);
+    }
+
+    .state-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      max-width: 46rem;
+      color: var(--muted);
+      font-size: clamp(0.72rem, 1.35vw, 0.95rem);
+      line-height: 1.55;
+      text-shadow: 0 2px 18px #000;
+    }
+
+    .state-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 11px;
+      border: 1px solid rgba(73, 226, 207, 0.48);
+      background: rgba(73, 226, 207, 0.09);
+      color: var(--ink);
+      font-weight: 760;
+      box-shadow: 0 0 32px rgba(73, 226, 207, 0.12);
+    }
+
+    .state-line > span:not(.state-pill) {
+      flex: 1 1 18rem;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .hud {
+      position: fixed;
+      right: max(18px, env(safe-area-inset-right));
+      top: max(18px, env(safe-area-inset-top));
+      z-index: 9;
+      width: min(390px, calc(100vw - 36px));
+      display: grid;
+      gap: 10px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 24px 80px var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .control-panel {
+      padding: 14px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      color: var(--quiet);
+      font-size: 0.68rem;
+      font-weight: 760;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .transition-meter {
+      width: 92px;
+      height: 3px;
+      overflow: hidden;
+      background: rgba(246, 240, 230, 0.16);
+    }
+
+    .transition-meter span {
+      display: block;
+      width: calc(var(--mix, 0) * 100%);
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--gold), var(--rose));
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 46px;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .command {
+      min-height: 42px;
+      border: 1px solid rgba(246, 240, 230, 0.18);
+      background: rgba(246, 240, 230, 0.075);
+      color: var(--ink);
+      cursor: pointer;
+      transition:
+        border-color 180ms ease,
+        background 180ms ease,
+        transform 180ms ease;
+    }
+
+    .command:hover,
+    .command:focus-visible {
+      border-color: rgba(73, 226, 207, 0.7);
+      background: rgba(73, 226, 207, 0.14);
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    .command.primary {
+      border-color: rgba(242, 189, 88, 0.56);
+      background: rgba(242, 189, 88, 0.16);
+    }
+
+    .rows {
+      display: grid;
+      gap: 11px;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: 42px 1fr 48px;
+      align-items: center;
+      gap: 10px;
+      min-height: 30px;
+    }
+
+    .control-row label,
+    .toggle-row label {
+      color: var(--quiet);
+      font-size: 0.72rem;
+      font-weight: 760;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .value {
+      color: var(--ink);
+      font-size: 0.82rem;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--cyan);
+    }
+
+    .toggle-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--gold);
+    }
+
+    .spin-control {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .spin-control button {
+      min-height: 34px;
+      border: 1px solid rgba(246, 240, 230, 0.18);
+      background: rgba(246, 240, 230, 0.055);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .spin-control button.is-active {
+      border-color: rgba(165, 210, 107, 0.7);
+      background: rgba(165, 210, 107, 0.14);
+      color: var(--ink);
+    }
+
+    .formula-panel {
+      padding: 14px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.62;
+    }
+
+    .formula-panel code {
+      color: var(--ink);
+      white-space: normal;
+    }
+
+    .formula-panel a {
+      color: var(--cyan);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(73, 226, 207, 0.36);
+    }
+
+    .quantum-map {
+      position: fixed;
+      left: max(18px, env(safe-area-inset-left));
+      right: max(18px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 10;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 240px;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .map-panel {
+      min-height: 178px;
+      padding: 12px 12px 9px;
+    }
+
+    .map-panel svg {
+      display: block;
+      width: 100%;
+      height: 150px;
+      overflow: visible;
+    }
+
+    .map-axis,
+    .map-line {
+      stroke: rgba(246, 240, 230, 0.2);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .map-boundary {
+      stroke: rgba(242, 189, 88, 0.42);
+      stroke-width: 1.5;
+      fill: none;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .map-dot {
+      cursor: pointer;
+      stroke: rgba(7, 9, 13, 0.8);
+      stroke-width: 1.2;
+      vector-effect: non-scaling-stroke;
+      transition:
+        r 140ms ease,
+        opacity 140ms ease,
+        fill 140ms ease;
+    }
+
+    .map-dot:hover,
+    .map-dot:focus-visible {
+      r: 6.5;
+      opacity: 1;
+      outline: none;
+    }
+
+    .map-dot.is-active {
+      fill: var(--gold);
+      r: 7;
+      opacity: 1;
+      filter: drop-shadow(0 0 12px rgba(242, 189, 88, 0.8));
+    }
+
+    .map-label {
+      fill: var(--quiet);
+      font-size: 10px;
+      font-weight: 760;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .map-caption {
+      color: var(--quiet);
+      font-size: 0.68rem;
+      line-height: 1.5;
+    }
+
+    .state-card {
+      padding: 13px;
+      display: grid;
+      align-content: space-between;
+      gap: 14px;
+    }
+
+    .big-state {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .number-box {
+      min-height: 66px;
+      padding: 9px;
+      border: 1px solid rgba(246, 240, 230, 0.14);
+      background: rgba(246, 240, 230, 0.055);
+    }
+
+    .number-box span {
+      display: block;
+      color: var(--quiet);
+      font-size: 0.62rem;
+      font-weight: 760;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .number-box strong {
+      display: block;
+      margin-top: 5px;
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .microcopy {
+      color: var(--muted);
+      font-size: 0.7rem;
+      line-height: 1.55;
+    }
+
+    .mobile-note {
+      display: none;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        overflow: auto;
+        overflow-x: hidden;
+      }
+
+      .app {
+        min-height: 100svh;
+        overflow: clip;
+      }
+
+      #orbital-canvas {
+        height: 100svh;
+      }
+
+      .readout {
+        position: relative;
+        inset: auto;
+        width: auto;
+        padding: 18px;
+        z-index: 8;
+      }
+
+      h1 {
+        max-width: 12ch;
+        font-size: clamp(3.4rem, 17vw, 5.6rem);
+      }
+
+      .hud {
+        position: relative;
+        inset: auto;
+        width: auto;
+        margin-top: clamp(220px, 31vh, 300px);
+        padding: 0 18px;
+      }
+
+      .quantum-map {
+        position: relative;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        grid-template-columns: 1fr;
+        padding: 10px 18px 18px;
+      }
+
+      .map-panel svg {
+        height: 168px;
+      }
+
+      .mobile-note {
+        display: inline;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .toolbar,
+      .big-state,
+      .spin-control,
+      .state-line {
+        grid-template-columns: 1fr;
+      }
+
+      .state-line {
+        display: grid;
+      }
+
+      .command {
+        min-height: 40px;
+      }
+
+      .control-row {
+        grid-template-columns: 34px 1fr;
+      }
+
+      .control-row .value {
+        display: none;
+      }
+
+      .formula-panel {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <canvas id="orbital-canvas" aria-label="Interactive hydrogen orbital wavefunction visualization"></canvas>
+    <div class="field-lines"></div>
+    <div class="grain"></div>
+    <div class="vignette"></div>
+
+    <section class="readout" aria-label="Current hydrogen orbital state">
+      <p class="eyebrow">Hydrogen eigenstate explorer</p>
+      <h1>Orbital transitions</h1>
+      <div class="state-line">
+        <span class="state-pill" id="bra-ket">|100&gt; &rarr; |200&gt;</span>
+        <span id="mix-copy">&alpha;|nlm&gt; + &beta;|n'l'm'&gt;, with normalized transition weights.</span>
+      </div>
+    </section>
+
+    <aside class="hud" aria-label="Orbital controls">
+      <section class="panel control-panel">
+        <div class="panel-title">
+          <span>State controls</span>
+          <span class="transition-meter" aria-hidden="true"><span id="mix-meter"></span></span>
+        </div>
+        <div class="toolbar">
+          <button class="command primary" id="play-toggle" type="button">Pause sequence</button>
+          <button class="command" id="apply-state" type="button">Transition to sliders</button>
+          <button class="command" id="next-state" type="button" aria-label="Next state">Next</button>
+        </div>
+        <div class="rows">
+          <div class="control-row">
+            <label for="n-slider">n</label>
+            <input id="n-slider" type="range" min="1" max="5" step="1" value="2" />
+            <span class="value" id="n-value">2</span>
+          </div>
+          <div class="control-row">
+            <label for="l-slider">l</label>
+            <input id="l-slider" type="range" min="0" max="4" step="1" value="0" />
+            <span class="value" id="l-value">0</span>
+          </div>
+          <div class="control-row">
+            <label for="m-slider">m</label>
+            <input id="m-slider" type="range" min="-4" max="4" step="1" value="0" />
+            <span class="value" id="m-value">0</span>
+          </div>
+          <div class="control-row">
+            <label for="speed-slider">rate</label>
+            <input id="speed-slider" type="range" min="0.18" max="2.4" step="0.02" value="0.72" />
+            <span class="value" id="speed-value">0.72</span>
+          </div>
+          <div class="control-row">
+            <label for="cutoff-slider">cut</label>
+            <input id="cutoff-slider" type="range" min="0" max="0.08" step="0.001" value="0.012" />
+            <span class="value" id="cutoff-value">0.012</span>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <label for="phase-toggle">Color by complex phase</label>
+          <input id="phase-toggle" type="checkbox" checked />
+        </div>
+        <div class="toggle-row">
+          <label for="fit-toggle">Fit radial scale to shell</label>
+          <input id="fit-toggle" type="checkbox" checked />
+        </div>
+        <div class="spin-control" aria-label="Spin quantum number">
+          <button id="spin-up" class="is-active" type="button">m_s = +1/2</button>
+          <button id="spin-down" type="button">m_s = -1/2</button>
+        </div>
+      </section>
+
+      <section class="panel formula-panel" aria-label="Mathematics used">
+        <div class="panel-title">Math used in this mockup</div>
+        <div>
+          <code>&psi;<sub>nlm</sub>(r,&theta;,&phi;) = R<sub>nl</sub>(r)Y<sub>l</sub><sup>m</sup>(&theta;,&phi;)</code><br />
+          <code>R<sub>nl</sub> = sqrt((2/n)<sup>3</sup>(n-l-1)!/(2n(n+l)!))e<sup>-&rho;/2</sup>&rho;<sup>l</sup>L<sub>n-l-1</sub><sup>2l+1</sup>(&rho;)</code>, with <code>&rho; = 2r/n</code>.
+        </div>
+        <p>
+          Here <code>m</code> is the z-axis orbital angular momentum projection:
+          <code>L<sub>z</sub>Y<sub>l</sub><sup>m</sup> = m&hbar;Y<sub>l</sub><sup>m</sup></code>.
+          Spin <code>m_s</code> is separate, so this non-relativistic spatial orbital does not change when spin flips.
+        </p>
+        <p>
+          References:
+          <a href="https://dlmf.nist.gov/14.30" target="_blank" rel="noreferrer">NIST DLMF spherical harmonics</a>,
+          <a href="https://dlmf.nist.gov/18.39" target="_blank" rel="noreferrer">NIST DLMF Coulomb-Laguerre functions</a>,
+          <a href="https://phys.libretexts.org/Bookshelves/Quantum_Mechanics/Introductory_Quantum_Mechanics_(Fitzpatrick)/08%3A_Central_Potentials/8.03%3A_Hydrogen_Atom" target="_blank" rel="noreferrer">Fitzpatrick hydrogen atom notes</a>.
+        </p>
+      </section>
+    </aside>
+
+    <section class="quantum-map" aria-label="Allowed quantum number map">
+      <div class="panel map-panel">
+        <div class="panel-title">
+          <span>Allowed values through n = 5</span>
+          <span>click any dot</span>
+        </div>
+        <svg id="quantum-svg" viewBox="0 0 720 152" role="img" aria-label="Allowed n, l, and m values for hydrogen orbitals"></svg>
+        <div class="map-caption">
+          Solid rails show the allowed constraints: <code>n = 1,2,...</code>,
+          <code>0 &le; l &lt; n</code>, and <code>-l &le; m &le; l</code>.
+          <span class="mobile-note">Drag the orbital to rotate it.</span>
+        </div>
+      </div>
+      <div class="panel state-card">
+        <div class="big-state">
+          <div class="number-box"><span>shell n</span><strong id="box-n">1</strong></div>
+          <div class="number-box"><span>subshell l</span><strong id="box-l">0</strong></div>
+          <div class="number-box"><span>magnetic m</span><strong id="box-m">0</strong></div>
+        </div>
+        <div class="microcopy" id="state-explain">
+          n sets the shell and energy for hydrogen. l sets orbital angular momentum and angular nodes. m sets the quantized orientation around the chosen z-axis.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    const canvas = document.querySelector("#orbital-canvas");
+    let renderer = null;
+    let scene = null;
+    let camera = null;
+    let controls = null;
+    let nucleus = null;
+    let cloud = null;
+    let geometry = null;
+    let material = null;
+    let fallbackContext = null;
+    let useWebGL = true;
+
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance"
+      });
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x07090d, 0.065);
+
+      camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.01, 80);
+      camera.position.set(0, 0.26, 7.2);
+
+      controls = new OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.055;
+      controls.rotateSpeed = 0.45;
+      controls.zoomSpeed = 0.7;
+      controls.minDistance = 2.0;
+      controls.maxDistance = 18;
+      controls.enablePan = false;
+
+      nucleus = new THREE.Mesh(
+        new THREE.SphereGeometry(0.045, 32, 16),
+        new THREE.MeshBasicMaterial({ color: 0xf2bd58, transparent: true, opacity: 0.94 })
+      );
+      scene.add(nucleus);
+
+      const axisMaterial = new THREE.LineBasicMaterial({
+        color: 0xf6f0e6,
+        transparent: true,
+        opacity: 0.16
+      });
+      const axisGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, -2.8, 0),
+        new THREE.Vector3(0, 2.8, 0)
+      ]);
+      const zAxis = new THREE.Line(axisGeometry, axisMaterial);
+      scene.add(zAxis);
+    } catch (error) {
+      useWebGL = false;
+      fallbackContext = canvas.getContext("2d", { alpha: true });
+      resizeFallbackCanvas();
+    }
+
+    const stateSequence = buildAllowedStates(5);
+    const curatedOrder = [
+      stateKey({ n: 1, l: 0, m: 0 }),
+      stateKey({ n: 2, l: 0, m: 0 }),
+      stateKey({ n: 2, l: 1, m: -1 }),
+      stateKey({ n: 2, l: 1, m: 0 }),
+      stateKey({ n: 2, l: 1, m: 1 }),
+      stateKey({ n: 3, l: 0, m: 0 }),
+      stateKey({ n: 3, l: 1, m: -1 }),
+      stateKey({ n: 3, l: 2, m: 0 }),
+      stateKey({ n: 3, l: 2, m: 2 }),
+      stateKey({ n: 4, l: 0, m: 0 }),
+      stateKey({ n: 4, l: 2, m: -2 }),
+      stateKey({ n: 4, l: 3, m: 1 }),
+      stateKey({ n: 5, l: 0, m: 0 }),
+      stateKey({ n: 5, l: 3, m: -2 }),
+      stateKey({ n: 5, l: 4, m: 0 }),
+      stateKey({ n: 5, l: 4, m: 4 })
+    ];
+    const stateByKey = new Map(stateSequence.map((state) => [stateKey(state), state]));
+    const tour = curatedOrder.map((key) => stateByKey.get(key)).filter(Boolean);
+
+    let fromState = { n: 1, l: 0, m: 0 };
+    let toState = { n: 2, l: 0, m: 0 };
+    let mix = 0;
+    let tourIndex = 1;
+    let autoPlay = true;
+    let spin = 0.5;
+    let needsCloudUpdate = true;
+    let lastUpdate = 0;
+
+    const factorial = [1];
+    for (let i = 1; i <= 24; i += 1) factorial[i] = factorial[i - 1] * i;
+
+    const pointCount = window.innerWidth < 760 ? 22000 : 46000;
+    const rMax = 82;
+    const physicalPositions = new Float32Array(pointCount * 3);
+    const positions = new Float32Array(pointCount * 3);
+    const colors = new Float32Array(pointCount * 3);
+    const densities = new Float32Array(pointCount);
+
+    seedPoints(physicalPositions, pointCount, rMax);
+
+    if (useWebGL) {
+      geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+      material = new THREE.PointsMaterial({
+        size: window.innerWidth < 760 ? 0.018 : 0.014,
+        sizeAttenuation: true,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.92,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+
+      cloud = new THREE.Points(geometry, material);
+      cloud.rotation.set(-0.16, 0.38, 0);
+      scene.add(cloud);
+    }
+
+    const nSlider = document.querySelector("#n-slider");
+    const lSlider = document.querySelector("#l-slider");
+    const mSlider = document.querySelector("#m-slider");
+    const speedSlider = document.querySelector("#speed-slider");
+    const cutoffSlider = document.querySelector("#cutoff-slider");
+    const phaseToggle = document.querySelector("#phase-toggle");
+    const fitToggle = document.querySelector("#fit-toggle");
+    const playToggle = document.querySelector("#play-toggle");
+    const nextState = document.querySelector("#next-state");
+    const applyState = document.querySelector("#apply-state");
+    const spinUp = document.querySelector("#spin-up");
+    const spinDown = document.querySelector("#spin-down");
+    const svg = document.querySelector("#quantum-svg");
+
+    const ui = {
+      nValue: document.querySelector("#n-value"),
+      lValue: document.querySelector("#l-value"),
+      mValue: document.querySelector("#m-value"),
+      speedValue: document.querySelector("#speed-value"),
+      cutoffValue: document.querySelector("#cutoff-value"),
+      braKet: document.querySelector("#bra-ket"),
+      mixCopy: document.querySelector("#mix-copy"),
+      mixMeter: document.querySelector("#mix-meter"),
+      boxN: document.querySelector("#box-n"),
+      boxL: document.querySelector("#box-l"),
+      boxM: document.querySelector("#box-m"),
+      explain: document.querySelector("#state-explain")
+    };
+
+    drawQuantumMap();
+    syncSlidersToState(toState);
+    updateSliderConstraints();
+    updateCloud(0);
+    updateText();
+
+    nSlider.addEventListener("input", () => {
+      updateSliderConstraints();
+      updateSliderReadouts();
+    });
+
+    lSlider.addEventListener("input", () => {
+      updateSliderConstraints();
+      updateSliderReadouts();
+    });
+
+    mSlider.addEventListener("input", updateSliderReadouts);
+    speedSlider.addEventListener("input", updateSliderReadouts);
+    cutoffSlider.addEventListener("input", () => {
+      updateSliderReadouts();
+      needsCloudUpdate = true;
+    });
+    phaseToggle.addEventListener("change", () => {
+      needsCloudUpdate = true;
+    });
+    fitToggle.addEventListener("change", () => {
+      needsCloudUpdate = true;
+    });
+
+    applyState.addEventListener("click", () => {
+      transitionTo(sliderState());
+    });
+
+    nextState.addEventListener("click", () => {
+      advanceTour();
+    });
+
+    playToggle.addEventListener("click", () => {
+      autoPlay = !autoPlay;
+      playToggle.textContent = autoPlay ? "Pause sequence" : "Play sequence";
+    });
+
+    spinUp.addEventListener("click", () => setSpin(0.5));
+    spinDown.addEventListener("click", () => setSpin(-0.5));
+
+    window.addEventListener("resize", () => {
+      if (useWebGL) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        material.size = window.innerWidth < 760 ? 0.018 : 0.014;
+      } else {
+        resizeFallbackCanvas();
+      }
+      needsCloudUpdate = true;
+    });
+
+    let previousTime = performance.now();
+    const tick = (time) => {
+      const delta = Math.min((time - previousTime) / 1000, 0.05);
+      previousTime = time;
+
+      if (autoPlay) {
+        mix += delta * Number(speedSlider.value) * 0.18;
+        if (mix >= 1) {
+          advanceTour(true);
+        }
+        needsCloudUpdate = true;
+      }
+
+      if (useWebGL) {
+        cloud.rotation.y += delta * 0.035;
+        cloud.rotation.x = THREE.MathUtils.lerp(cloud.rotation.x, -0.16 + Math.sin(time * 0.00018) * 0.08, 0.025);
+        nucleus.scale.setScalar(1 + Math.sin(time * 0.003) * 0.08);
+        controls.update();
+      }
+
+      if (needsCloudUpdate && time - lastUpdate > 42) {
+        updateCloud(time);
+        updateText();
+        lastUpdate = time;
+        needsCloudUpdate = false;
+      }
+
+      if (useWebGL) {
+        renderer.render(scene, camera);
+      }
+    };
+
+    if (useWebGL) {
+      renderer.setAnimationLoop(tick);
+    } else {
+      const fallbackLoop = (time) => {
+        tick(time);
+        requestAnimationFrame(fallbackLoop);
+      };
+      requestAnimationFrame(fallbackLoop);
+    }
+
+    function buildAllowedStates(maxN) {
+      const states = [];
+      for (let n = 1; n <= maxN; n += 1) {
+        for (let l = 0; l < n; l += 1) {
+          for (let m = -l; m <= l; m += 1) {
+            states.push({ n, l, m });
+          }
+        }
+      }
+      return states;
+    }
+
+    function stateKey(state) {
+      return `${state.n}:${state.l}:${state.m}`;
+    }
+
+    function ket(state) {
+      const signedM = state.m < 0 ? `-${Math.abs(state.m)}` : `${state.m}`;
+      return `|${state.n}${state.l}${signedM}>`;
+    }
+
+    function seedPoints(target, count, maxRadius) {
+      let seed = 9137569;
+      const rand = () => {
+        seed = (1664525 * seed + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+
+      for (let i = 0; i < count; i += 1) {
+        const radiusBand = i % 5;
+        const exponent = [3.2, 2.4, 1.75, 1.18, 0.82][radiusBand];
+        const r = maxRadius * Math.pow(rand(), exponent);
+        const z = 2 * rand() - 1;
+        const phi = 2 * Math.PI * rand();
+        const s = Math.sqrt(Math.max(0, 1 - z * z));
+        target[i * 3] = r * s * Math.cos(phi);
+        target[i * 3 + 1] = r * s * Math.sin(phi);
+        target[i * 3 + 2] = r * z;
+      }
+    }
+
+    function updateCloud(time) {
+      const t = smoothstep(Math.max(0, Math.min(1, mix)));
+      const alpha = Math.cos(t * Math.PI * 0.5);
+      const beta = Math.sin(t * Math.PI * 0.5);
+      const nEff = alpha * alpha * fromState.n + beta * beta * toState.n;
+      const shellRadius = 5.5 + 2.85 * nEff * nEff;
+      const scale = fitToggle.checked ? 2.75 / shellRadius : 4.9 / rMax;
+      const phaseMode = phaseToggle.checked;
+
+      let maxDensity = 0;
+
+      for (let i = 0; i < pointCount; i += 1) {
+        const x = physicalPositions[i * 3];
+        const y = physicalPositions[i * 3 + 1];
+        const z = physicalPositions[i * 3 + 2];
+        const a = wavefunction(fromState, x, y, z);
+        const b = wavefunction(toState, x, y, z);
+        const re = alpha * a.re + beta * b.re;
+        const im = alpha * a.im + beta * b.im;
+        const density = re * re + im * im;
+        densities[i] = density;
+        if (density > maxDensity) maxDensity = density;
+
+        positions[i * 3] = x * scale;
+        positions[i * 3 + 1] = z * scale;
+        positions[i * 3 + 2] = y * scale;
+      }
+
+      const cutoff = Number(cutoffSlider.value) * maxDensity;
+      const denom = Math.max(maxDensity - cutoff, 1e-18);
+      const phaseSpin = spin > 0 ? 0.0 : 0.5;
+
+      for (let i = 0; i < pointCount; i += 1) {
+        const density = densities[i];
+        let intensity = density <= cutoff ? 0 : (density - cutoff) / denom;
+        intensity = Math.pow(Math.min(1, intensity * 1.8), 0.34);
+
+        if (intensity <= 0.015) {
+          colors[i * 3] = 0;
+          colors[i * 3 + 1] = 0;
+          colors[i * 3 + 2] = 0;
+          continue;
+        }
+
+        const x = physicalPositions[i * 3];
+        const y = physicalPositions[i * 3 + 1];
+        const z = physicalPositions[i * 3 + 2];
+        const psi = blendedWaveAtPoint(x, y, z, alpha, beta);
+        const phase = Math.atan2(psi.im, psi.re);
+        const hue = phaseMode
+          ? positiveModulo(phase / (2 * Math.PI) + phaseSpin + 0.08 * Math.sin(time * 0.0003), 1)
+          : psi.re >= 0 ? 0.47 : 0.11;
+        const rgb = hslToRgb(hue, phaseMode ? 0.82 : 0.72, 0.56);
+        const glow = intensity * (phaseMode ? 1 : 0.9);
+
+        colors[i * 3] = rgb.r * glow;
+        colors[i * 3 + 1] = rgb.g * glow;
+        colors[i * 3 + 2] = rgb.b * glow;
+      }
+
+      if (useWebGL) {
+        geometry.attributes.position.needsUpdate = true;
+        geometry.attributes.color.needsUpdate = true;
+      } else {
+        drawFallbackCanvas(time);
+      }
+      ui.mixMeter.parentElement.style.setProperty("--mix", `${Math.max(0, Math.min(1, mix))}`);
+    }
+
+    function resizeFallbackCanvas() {
+      if (!fallbackContext) return;
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(window.innerWidth * ratio);
+      canvas.height = Math.floor(window.innerHeight * ratio);
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      fallbackContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+    }
+
+    function drawFallbackCanvas(time) {
+      if (!fallbackContext) return;
+      const ctx = fallbackContext;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const centerX = width * 0.5;
+      const centerY = height * 0.48;
+      const unit = Math.min(width, height) * 0.26;
+      const yRot = 0.38 + time * 0.000045;
+      const xRot = -0.16 + Math.sin(time * 0.00018) * 0.08;
+      const cosY = Math.cos(yRot);
+      const sinY = Math.sin(yRot);
+      const cosX = Math.cos(xRot);
+      const sinX = Math.sin(xRot);
+      const stride = window.innerWidth < 760 ? 1 : 2;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = "rgba(246, 240, 230, 0.14)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY - unit * 0.95);
+      ctx.lineTo(centerX, centerY + unit * 0.95);
+      ctx.stroke();
+
+      for (let i = 0; i < pointCount; i += stride) {
+        const r = colors[i * 3];
+        const g = colors[i * 3 + 1];
+        const b = colors[i * 3 + 2];
+        const brightness = Math.max(r, g, b);
+        if (brightness <= 0.02) continue;
+
+        const x = positions[i * 3];
+        const y = positions[i * 3 + 1];
+        const z = positions[i * 3 + 2];
+        const xr = x * cosY - z * sinY;
+        const zr = x * sinY + z * cosY;
+        const yr = y * cosX - zr * sinX;
+        const zz = y * sinX + zr * cosX;
+        const perspective = 1.9 / Math.max(0.82, 2.6 + zz);
+        const sx = centerX + xr * unit * perspective;
+        const sy = centerY - yr * unit * perspective;
+        const size = Math.max(0.55, 2.2 * perspective * brightness);
+        const alpha = Math.min(0.86, 0.18 + brightness * 0.9);
+
+        ctx.fillStyle = `rgba(${Math.min(255, r * 330)}, ${Math.min(255, g * 330)}, ${Math.min(255, b * 330)}, ${alpha})`;
+        ctx.fillRect(sx, sy, size, size);
+      }
+
+      ctx.globalCompositeOperation = "source-over";
+      const pulse = 0.8 + Math.sin(time * 0.003) * 0.16;
+      ctx.fillStyle = "rgba(242, 189, 88, 0.94)";
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 5 * pulse, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function blendedWaveAtPoint(x, y, z, alpha, beta) {
+      const a = wavefunction(fromState, x, y, z);
+      const b = wavefunction(toState, x, y, z);
+      return {
+        re: alpha * a.re + beta * b.re,
+        im: alpha * a.im + beta * b.im
+      };
+    }
+
+    function wavefunction(state, x, y, z) {
+      const r = Math.sqrt(x * x + y * y + z * z);
+      if (r < 1e-10) {
+        const radial = radialWave(state.n, state.l, 0);
+        const angular = sphericalHarmonic(state.l, state.m, 0, 0);
+        return { re: radial * angular.re, im: radial * angular.im };
+      }
+
+      const theta = Math.acos(Math.max(-1, Math.min(1, z / r)));
+      const phi = Math.atan2(y, x);
+      const radial = radialWave(state.n, state.l, r);
+      const angular = sphericalHarmonic(state.l, state.m, theta, phi);
+      return {
+        re: radial * angular.re,
+        im: radial * angular.im
+      };
+    }
+
+    function radialWave(n, l, r) {
+      const rho = (2 * r) / n;
+      const k = n - l - 1;
+      if (k < 0) return 0;
+      const norm = Math.sqrt(Math.pow(2 / n, 3) * factorial[k] / (2 * n * factorial[n + l]));
+      return norm * Math.exp(-rho / 2) * Math.pow(rho, l) * generalizedLaguerre(k, 2 * l + 1, rho);
+    }
+
+    function generalizedLaguerre(k, alpha, x) {
+      if (k === 0) return 1;
+      if (k === 1) return 1 + alpha - x;
+
+      let lm2 = 1;
+      let lm1 = 1 + alpha - x;
+      let current = lm1;
+      for (let n = 2; n <= k; n += 1) {
+        current = ((2 * n - 1 + alpha - x) * lm1 - (n - 1 + alpha) * lm2) / n;
+        lm2 = lm1;
+        lm1 = current;
+      }
+      return current;
+    }
+
+    function sphericalHarmonic(l, m, theta, phi) {
+      if (m < 0) {
+        const positive = sphericalHarmonic(l, -m, theta, phi);
+        const sign = Math.abs(m) % 2 === 0 ? 1 : -1;
+        return { re: sign * positive.re, im: -sign * positive.im };
+      }
+
+      const p = associatedLegendre(l, m, Math.cos(theta));
+      const norm = Math.sqrt(((2 * l + 1) / (4 * Math.PI)) * factorial[l - m] / factorial[l + m]);
+      const phase = m * phi;
+      const amp = norm * p;
+      return {
+        re: amp * Math.cos(phase),
+        im: amp * Math.sin(phase)
+      };
+    }
+
+    function associatedLegendre(l, m, x) {
+      let pmm = 1;
+      if (m > 0) {
+        const somx2 = Math.sqrt(Math.max(0, (1 - x) * (1 + x)));
+        let fact = 1;
+        for (let i = 1; i <= m; i += 1) {
+          pmm *= -fact * somx2;
+          fact += 2;
+        }
+      }
+
+      if (l === m) return pmm;
+
+      let pmmp1 = x * (2 * m + 1) * pmm;
+      if (l === m + 1) return pmmp1;
+
+      let pll = 0;
+      for (let ll = m + 2; ll <= l; ll += 1) {
+        pll = ((2 * ll - 1) * x * pmmp1 - (ll + m - 1) * pmm) / (ll - m);
+        pmm = pmmp1;
+        pmmp1 = pll;
+      }
+      return pll;
+    }
+
+    function transitionTo(state) {
+      if (!isAllowed(state)) return;
+      fromState = currentBlendedState();
+      toState = { ...state };
+      mix = 0;
+      autoPlay = false;
+      playToggle.textContent = "Play sequence";
+      syncSlidersToState(toState);
+      setTourIndexNear(state);
+      needsCloudUpdate = true;
+    }
+
+    function advanceTour(keepPlaying = false) {
+      fromState = { ...toState };
+      tourIndex = (tourIndex + 1) % tour.length;
+      toState = { ...tour[tourIndex] };
+      mix = 0;
+      autoPlay = keepPlaying ? autoPlay : false;
+      playToggle.textContent = autoPlay ? "Pause sequence" : "Play sequence";
+      syncSlidersToState(toState);
+      needsCloudUpdate = true;
+    }
+
+    function currentBlendedState() {
+      return mix > 0.5 ? { ...toState } : { ...fromState };
+    }
+
+    function setTourIndexNear(state) {
+      const index = tour.findIndex((entry) => stateKey(entry) === stateKey(state));
+      if (index >= 0) tourIndex = index;
+    }
+
+    function sliderState() {
+      const n = Number(nSlider.value);
+      const l = Math.min(Number(lSlider.value), n - 1);
+      const m = Math.max(-l, Math.min(l, Number(mSlider.value)));
+      return { n, l, m };
+    }
+
+    function isAllowed(state) {
+      return state.n >= 1
+        && state.n <= 5
+        && state.l >= 0
+        && state.l < state.n
+        && state.m >= -state.l
+        && state.m <= state.l;
+    }
+
+    function syncSlidersToState(state) {
+      nSlider.value = state.n;
+      lSlider.value = state.l;
+      mSlider.value = state.m;
+      updateSliderConstraints();
+      updateSliderReadouts();
+    }
+
+    function updateSliderConstraints() {
+      const n = Number(nSlider.value);
+      lSlider.max = `${n - 1}`;
+      if (Number(lSlider.value) > n - 1) lSlider.value = `${n - 1}`;
+
+      const l = Number(lSlider.value);
+      mSlider.min = `${-l}`;
+      mSlider.max = `${l}`;
+      if (Number(mSlider.value) < -l) mSlider.value = `${-l}`;
+      if (Number(mSlider.value) > l) mSlider.value = `${l}`;
+    }
+
+    function updateSliderReadouts() {
+      ui.nValue.textContent = nSlider.value;
+      ui.lValue.textContent = lSlider.value;
+      ui.mValue.textContent = mSlider.value;
+      ui.speedValue.textContent = Number(speedSlider.value).toFixed(2);
+      ui.cutoffValue.textContent = Number(cutoffSlider.value).toFixed(3);
+    }
+
+    function updateText() {
+      const t = Math.max(0, Math.min(1, mix));
+      const alpha = Math.cos(smoothstep(t) * Math.PI * 0.5);
+      const beta = Math.sin(smoothstep(t) * Math.PI * 0.5);
+      const shown = t < 0.5 ? fromState : toState;
+      ui.braKet.innerHTML = `${ket(fromState)} &rarr; ${ket(toState)}`;
+      ui.mixCopy.innerHTML = `&alpha; = ${alpha.toFixed(2)}, &beta; = ${beta.toFixed(2)}, spin label m_s = ${spin > 0 ? "+1/2" : "-1/2"}.`;
+      ui.boxN.textContent = shown.n;
+      ui.boxL.textContent = shown.l;
+      ui.boxM.textContent = shown.m;
+      ui.explain.textContent = explanationFor(shown);
+      markActiveDot(shown);
+    }
+
+    function explanationFor(state) {
+      const subshells = ["s", "p", "d", "f", "g"];
+      const radialNodes = state.n - state.l - 1;
+      const angularNodes = state.l;
+      return `${state.n}${subshells[state.l]} with m = ${state.m}: ${radialNodes} radial node${radialNodes === 1 ? "" : "s"}, ${angularNodes} angular node${angularNodes === 1 ? "" : "s"}. m chooses the quantized z-axis projection, not a new shell.`;
+    }
+
+    function setSpin(value) {
+      spin = value;
+      spinUp.classList.toggle("is-active", spin > 0);
+      spinDown.classList.toggle("is-active", spin < 0);
+      needsCloudUpdate = true;
+      updateText();
+    }
+
+    function drawQuantumMap() {
+      const width = 720;
+      const height = 152;
+      const xFor = (n, m, l) => 74 + (n - 1) * 136 + (l === 0 ? 0 : (m / Math.max(1, l)) * 34);
+      const yFor = (l) => 124 - l * 26;
+      const pieces = [];
+
+      pieces.push(`<line class="map-axis" x1="48" y1="124" x2="${width - 38}" y2="124"></line>`);
+      pieces.push(`<line class="map-axis" x1="48" y1="124" x2="48" y2="16"></line>`);
+      pieces.push(`<text class="map-label" x="52" y="12">l</text>`);
+      pieces.push(`<text class="map-label" x="${width - 54}" y="142">n</text>`);
+
+      for (let n = 1; n <= 5; n += 1) {
+        const x = 74 + (n - 1) * 136;
+        pieces.push(`<text class="map-label" x="${x - 4}" y="142">${n}</text>`);
+        pieces.push(`<line class="map-line" x1="${x}" y1="126" x2="${x}" y2="${yFor(n - 1)}"></line>`);
+        for (let l = 0; l < n; l += 1) {
+          pieces.push(`<line class="map-line" x1="${xFor(n, -l, l)}" y1="${yFor(l)}" x2="${xFor(n, l, l)}" y2="${yFor(l)}"></line>`);
+        }
+      }
+
+      const boundary = Array.from({ length: 5 }, (_, index) => {
+        const n = index + 1;
+        return `${74 + index * 136},${yFor(n - 1)}`;
+      }).join(" ");
+      pieces.push(`<polyline class="map-boundary" points="${boundary}"></polyline>`);
+
+      for (const state of stateSequence) {
+        const x = xFor(state.n, state.m, state.l);
+        const y = yFor(state.l);
+        const hue = 172 + state.l * 28 + state.m * 8;
+        const fill = `hsl(${hue} 78% 62%)`;
+        pieces.push(`<circle tabindex="0" class="map-dot" data-state="${stateKey(state)}" cx="${x}" cy="${y}" r="4.6" fill="${fill}" opacity="0.72"></circle>`);
+      }
+
+      svg.innerHTML = pieces.join("");
+      svg.querySelectorAll(".map-dot").forEach((dot) => {
+        const activate = () => {
+          const state = stateByKey.get(dot.dataset.state);
+          if (state) transitionTo(state);
+        };
+        dot.addEventListener("click", activate);
+        dot.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            activate();
+          }
+        });
+      });
+    }
+
+    function markActiveDot(state) {
+      const key = stateKey(state);
+      svg.querySelectorAll(".map-dot").forEach((dot) => {
+        dot.classList.toggle("is-active", dot.dataset.state === key);
+      });
+    }
+
+    function smoothstep(x) {
+      return x * x * (3 - 2 * x);
+    }
+
+    function positiveModulo(value, modulus) {
+      return ((value % modulus) + modulus) % modulus;
+    }
+
+    function hslToRgb(h, s, l) {
+      const hue2rgb = (p, q, t) => {
+        let next = t;
+        if (next < 0) next += 1;
+        if (next > 1) next -= 1;
+        if (next < 1 / 6) return p + (q - p) * 6 * next;
+        if (next < 1 / 2) return q;
+        if (next < 2 / 3) return p + (q - p) * (2 / 3 - next) * 6;
+        return p;
+      };
+
+      if (s === 0) return { r: l, g: l, b: l };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      return {
+        r: hue2rgb(p, q, h + 1 / 3),
+        g: hue2rgb(p, q, h),
+        b: hue2rgb(p, q, h - 1 / 3)
+      };
+    }
+  </script>
+</body>
+</html>
