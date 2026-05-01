@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#02030a" />
+  <title>Travis Hinton - Solar System Homepage Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #02030a;
+      --ink: #f8fbff;
+      --muted: rgba(235, 243, 255, 0.62);
+      --line: rgba(235, 243, 255, 0.18);
+      --panel: rgba(2, 3, 10, 0.66);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family:
+        "IBM Plex Mono",
+        "Berkeley Mono",
+        "SFMono-Regular",
+        Consolas,
+        monospace;
+    }
+
+    body {
+      min-height: 100svh;
+    }
+
+    button,
+    a {
+      font: inherit;
+    }
+
+    .site-shell {
+      position: relative;
+      min-height: 100svh;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255, 196, 116, 0.09), transparent 16%),
+        radial-gradient(circle at 50% 50%, rgba(92, 139, 214, 0.11), transparent 48%),
+        #02030a;
+    }
+
+    #solar-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .grain,
+    .vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .grain {
+      opacity: 0.14;
+      mix-blend-mode: screen;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+      background-size: 43px 43px;
+      mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 83%);
+    }
+
+    .vignette {
+      z-index: 3;
+      background:
+        radial-gradient(circle at 50% 50%, transparent 0%, transparent 61%, rgba(0, 0, 0, 0.62) 100%),
+        linear-gradient(180deg, rgba(2, 3, 10, 0.34), transparent 18%, transparent 76%, rgba(2, 3, 10, 0.56));
+    }
+
+    .brand {
+      position: fixed;
+      left: max(20px, env(safe-area-inset-left));
+      top: max(18px, env(safe-area-inset-top));
+      z-index: 14;
+      display: grid;
+      gap: 10px;
+      max-width: min(650px, calc(100vw - 40px));
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(0.92rem, 1.75vw, 1.22rem);
+      font-weight: 760;
+      line-height: 1;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      text-shadow: 0 0 30px #02030a;
+    }
+
+    .brand p {
+      max-width: 72ch;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(0.58rem, 1vw, 0.7rem);
+      line-height: 1.65;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-shadow: 0 0 24px #02030a;
+    }
+
+    .readout {
+      position: fixed;
+      right: max(18px, env(safe-area-inset-right));
+      top: max(18px, env(safe-area-inset-top));
+      z-index: 14;
+      color: rgba(235, 243, 255, 0.54);
+      font-size: 0.58rem;
+      line-height: 1.8;
+      letter-spacing: 0.18em;
+      text-align: right;
+      text-transform: uppercase;
+      pointer-events: none;
+      text-shadow: 0 0 24px #02030a;
+    }
+
+    .readout b {
+      display: block;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 0.72rem;
+      font-weight: 760;
+      letter-spacing: 0.22em;
+    }
+
+    .planet-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .planet-link {
+      --x: 50vw;
+      --y: 50vh;
+      --hit: 44px;
+      --accent: #fff;
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      width: var(--hit);
+      height: var(--hit);
+      color: var(--ink);
+      text-decoration: none;
+      transform: translate(-50%, -50%);
+      pointer-events: auto;
+      cursor: crosshair;
+      outline: none;
+    }
+
+    .planet-link::before {
+      position: absolute;
+      inset: 0;
+      border: 1px solid transparent;
+      border-radius: 50%;
+      content: "";
+      transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease;
+    }
+
+    .planet-link:hover::before,
+    .planet-link:focus-visible::before {
+      border-color: color-mix(in srgb, var(--accent) 56%, transparent);
+      box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+
+    .planet-label {
+      position: absolute;
+      left: calc(50% + var(--label-dx, 0px));
+      top: calc(100% + var(--label-dy, 8px));
+      display: grid;
+      justify-items: center;
+      gap: 4px;
+      min-width: max-content;
+      color: rgba(248, 251, 255, 0.78);
+      text-align: center;
+      text-shadow: 0 0 22px #02030a;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .planet-label strong,
+    .planet-label span {
+      display: block;
+    }
+
+    .planet-label strong {
+      font-size: 0.58rem;
+      font-weight: 780;
+      line-height: 1.2;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .planet-label span {
+      color: rgba(235, 243, 255, 0.44);
+      font-size: 0.48rem;
+      font-weight: 680;
+      line-height: 1.2;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .text-nav {
+      position: fixed;
+      left: max(18px, env(safe-area-inset-left));
+      right: max(18px, env(safe-area-inset-right));
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 14;
+      display: grid;
+      grid-template-columns: minmax(220px, 430px) minmax(0, 1fr);
+      gap: 12px;
+      align-items: end;
+      pointer-events: none;
+    }
+
+    .caption,
+    .link-strip,
+    .time-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+    }
+
+    .caption {
+      padding: 14px 15px 13px;
+      pointer-events: auto;
+    }
+
+    .caption p {
+      margin: 0;
+      color: rgba(235, 243, 255, 0.58);
+      font-size: 0.61rem;
+      line-height: 1.58;
+      letter-spacing: 0.08em;
+    }
+
+    .caption b {
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 760;
+    }
+
+    .link-strip {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      overflow: hidden;
+      pointer-events: auto;
+    }
+
+    .strip-link {
+      min-width: 0;
+      padding: 13px 11px 12px;
+      border-right: 1px solid rgba(235, 243, 255, 0.13);
+      color: rgba(248, 251, 255, 0.74);
+      text-decoration: none;
+      transition:
+        background 180ms ease,
+        color 180ms ease;
+    }
+
+    .strip-link:last-child {
+      border-right: 0;
+    }
+
+    .strip-link:hover,
+    .strip-link:focus-visible {
+      background: rgba(255, 255, 255, 0.075);
+      color: #fff;
+      outline: none;
+    }
+
+    .strip-link b,
+    .strip-link span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .strip-link b {
+      font-size: 0.57rem;
+      font-weight: 780;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .strip-link span {
+      margin-top: 5px;
+      color: rgba(235, 243, 255, 0.4);
+      font-size: 0.48rem;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .time-card {
+      position: fixed;
+      right: max(18px, env(safe-area-inset-right));
+      bottom: max(104px, calc(env(safe-area-inset-bottom) + 104px));
+      z-index: 14;
+      width: min(300px, calc(100vw - 36px));
+      padding: 12px 13px;
+      color: rgba(235, 243, 255, 0.58);
+      font-size: 0.55rem;
+      line-height: 1.65;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .time-card b {
+      display: block;
+      margin-bottom: 7px;
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 0.64rem;
+      letter-spacing: 0.16em;
+    }
+
+    .skip-link {
+      position: fixed;
+      left: 14px;
+      top: 14px;
+      z-index: 30;
+      padding: 9px 11px;
+      background: #fff;
+      color: #02030a;
+      text-decoration: none;
+      transform: translateY(-150%);
+    }
+
+    .skip-link:focus {
+      transform: translateY(0);
+    }
+
+    @media (max-width: 900px) {
+      .brand {
+        right: 18px;
+      }
+
+      .brand p,
+      .readout,
+      .caption {
+        display: none;
+      }
+
+      .text-nav {
+        grid-template-columns: 1fr;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+      }
+
+      .link-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .time-card {
+        right: 12px;
+        bottom: 118px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .brand h1 {
+        font-size: 0.72rem;
+        letter-spacing: 0.22em;
+      }
+
+      .planet-label span {
+        display: none;
+      }
+
+      .link-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#text-navigation">Skip to text navigation</a>
+
+  <main class="site-shell" aria-labelledby="site-title">
+    <canvas id="solar-canvas" aria-hidden="true"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <header class="brand">
+      <h1 id="site-title">Travis Hinton</h1>
+      <p>Homepage links as planets in a heliocentric solar system initialized from current-time Keplerian orbital elements.</p>
+    </header>
+
+    <div class="readout" aria-hidden="true">
+      <b>Solar Link Map</b>
+      JPL elements / J2000<br />
+      Current epoch aligned<br />
+      Kepler solver active
+    </div>
+
+    <nav class="planet-layer" id="planet-layer" aria-label="Planet navigation"></nav>
+
+    <div class="time-card" aria-hidden="true">
+      <b id="epoch-label">Epoch</b>
+      <span id="model-label">Heliocentric ecliptic view. Orbital distances are visually compressed; positions come from the real orbital solution.</span>
+    </div>
+
+    <section class="text-nav" id="text-navigation" aria-label="Site navigation">
+      <div class="caption">
+        <p><b>The links are pure planets.</b> Six destinations use Mercury through Saturn; Uranus and Neptune remain in the model as unlinked outer planets for context.</p>
+      </div>
+      <nav class="link-strip" id="link-strip" aria-label="Text links"></nav>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("solar-canvas");
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const planetLayer = document.getElementById("planet-layer");
+      const linkStrip = document.getElementById("link-strip");
+      const epochLabel = document.getElementById("epoch-label");
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+      const TAU = Math.PI * 2;
+      const DEG = Math.PI / 180;
+      const DPR_CAP = 1.5;
+      const J2000 = 2451545.0;
+      const SIM_DAYS_PER_SECOND = 4;
+
+      const bodies = [
+        {
+          name: "Mercury",
+          link: "Poetry",
+          code: "P-01",
+          href: "/poetry/",
+          accent: "#ff9d76",
+          diameter: 4879,
+          color: "rgb(202, 170, 143)",
+          label: { x: -22, y: 10 },
+          elements: { a: [0.38709927, 0.00000037], e: [0.20563593, 0.00001906], I: [7.00497902, -0.00594749], L: [252.25032350, 149472.67411175], peri: [77.45779628, 0.16047689], node: [48.33076593, -0.12534081] },
+        },
+        {
+          name: "Venus",
+          link: "My Work",
+          code: "M-02",
+          href: "/work/",
+          accent: "#ffd39a",
+          diameter: 12104,
+          color: "rgb(226, 198, 143)",
+          label: { x: -14, y: 10 },
+          elements: { a: [0.72333566, 0.00000390], e: [0.00677672, -0.00004107], I: [3.39467605, -0.00078890], L: [181.97909950, 58517.81538729], peri: [131.60246718, 0.00268329], node: [76.67984255, -0.27769418] },
+        },
+        {
+          name: "Earth",
+          link: "About Me",
+          code: "A-03",
+          href: "/about/",
+          accent: "#9ed0ff",
+          diameter: 12756,
+          color: "rgb(114, 174, 226)",
+          label: { x: -26, y: 8 },
+          elements: { a: [1.00000261, 0.00000562], e: [0.01671123, -0.00004392], I: [-0.00001531, -0.01294668], L: [100.46457166, 35999.37244981], peri: [102.93768193, 0.32327364], node: [0, 0] },
+        },
+        {
+          name: "Mars",
+          link: "Web Design",
+          code: "W-04",
+          href: "/web-design/",
+          accent: "#ff8b6e",
+          diameter: 6792,
+          color: "rgb(211, 103, 73)",
+          label: { x: 36, y: 8 },
+          elements: { a: [1.52371034, 0.00001847], e: [0.09339410, 0.00007882], I: [1.84969142, -0.00813131], L: [-4.55343205, 19140.30268499], peri: [-23.94362959, 0.44441088], node: [49.55953891, -0.29257343] },
+        },
+        {
+          name: "Jupiter",
+          link: "Business Automation",
+          code: "B-05",
+          href: "/business-automation/",
+          accent: "#f0c084",
+          diameter: 142984,
+          color: "rgb(224, 180, 126)",
+          label: { x: 0, y: 12 },
+          elements: { a: [5.20288700, -0.00011607], e: [0.04838624, -0.00013253], I: [1.30439695, -0.00183714], L: [34.39644051, 3034.74612775], peri: [14.72847983, 0.21252668], node: [100.47390909, 0.20469106] },
+        },
+        {
+          name: "Saturn",
+          link: "Contact",
+          code: "C-06",
+          href: "/contact/",
+          accent: "#ead397",
+          diameter: 120536,
+          color: "rgb(219, 196, 139)",
+          label: { x: 0, y: 12 },
+          elements: { a: [9.53667594, -0.00125060], e: [0.05386179, -0.00050991], I: [2.48599187, 0.00193609], L: [49.95424423, 1222.49362201], peri: [92.59887831, -0.41897216], node: [113.66242448, -0.28867794] },
+        },
+        {
+          name: "Uranus",
+          diameter: 51118,
+          color: "rgb(149, 220, 220)",
+          elements: { a: [19.18916464, -0.00196176], e: [0.04725744, -0.00004397], I: [0.77263783, -0.00242939], L: [313.23810451, 428.48202785], peri: [170.95427630, 0.40805281], node: [74.01692503, 0.04240589] },
+        },
+        {
+          name: "Neptune",
+          diameter: 49528,
+          color: "rgb(94, 132, 231)",
+          elements: { a: [30.06992276, 0.00026291], e: [0.00859048, 0.00005105], I: [1.77004347, 0.00035372], L: [-55.12002969, 218.45945325], peri: [44.96476227, -0.32241464], node: [131.78422574, -0.00508664] },
+        },
+      ];
+
+      const state = {
+        dpr: 1,
+        w: 0,
+        h: 0,
+        cell: 5,
+        startMs: Date.now(),
+        simulatedMs: Date.now(),
+        last: performance.now(),
+        stars: [],
+        anchors: [],
+        reduced: reducedMotion.matches,
+      };
+
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const clamp01 = (v) => clamp(v, 0, 1);
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      function hash(seed) {
+        const n = Math.sin(seed * 127.1) * 43758.5453123;
+        return n - Math.floor(n);
+      }
+
+      function rand(seed, min = 0, max = 1) {
+        return min + hash(seed) * (max - min);
+      }
+
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+        const w = Math.max(1, Math.floor(window.innerWidth * dpr));
+        const h = Math.max(1, Math.floor(window.innerHeight * dpr));
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        state.dpr = dpr;
+        state.w = w;
+        state.h = h;
+        state.cell = Math.max(2, Math.round((window.innerWidth < 720 ? 3.8 : 4.8) * dpr));
+      }
+
+      function initStars() {
+        state.stars = Array.from({ length: 520 }, (_, i) => ({
+          x: rand(i + 10),
+          y: rand(i + 220),
+          s: rand(i + 430) > 0.97 ? 2 : 1,
+          a: rand(i + 640, 0.1, 0.62),
+          warm: rand(i + 850) > 0.84,
+          phase: rand(i + 1020, 0, TAU),
+        }));
+      }
+
+      function julianDate(ms) {
+        return ms / 86400000 + 2440587.5;
+      }
+
+      function normalizeDegrees(v) {
+        let n = v % 360;
+        if (n < 0) n += 360;
+        return n;
+      }
+
+      function solveKepler(M, e) {
+        let E = M + e * Math.sin(M) * (1 + e * Math.cos(M));
+        for (let i = 0; i < 8; i++) {
+          const delta = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+          E -= delta;
+          if (Math.abs(delta) < 1e-10) break;
+        }
+        return E;
+      }
+
+      function planetPosition(body, jd) {
+        const T = (jd - J2000) / 36525;
+        const el = body.elements;
+        const a = el.a[0] + el.a[1] * T;
+        const e = el.e[0] + el.e[1] * T;
+        const I = (el.I[0] + el.I[1] * T) * DEG;
+        const L = normalizeDegrees(el.L[0] + el.L[1] * T);
+        const peri = normalizeDegrees(el.peri[0] + el.peri[1] * T);
+        const node = normalizeDegrees(el.node[0] + el.node[1] * T);
+        const M = normalizeDegrees(L - peri) * DEG;
+        const E = solveKepler(M, e);
+        const xp = a * (Math.cos(E) - e);
+        const yp = a * Math.sqrt(1 - e * e) * Math.sin(E);
+        const omega = (peri - node) * DEG;
+        const O = node * DEG;
+        const cosO = Math.cos(O);
+        const sinO = Math.sin(O);
+        const cosI = Math.cos(I);
+        const sinI = Math.sin(I);
+        const cosw = Math.cos(omega);
+        const sinw = Math.sin(omega);
+
+        return {
+          x: (cosw * cosO - sinw * sinO * cosI) * xp + (-sinw * cosO - cosw * sinO * cosI) * yp,
+          y: (cosw * sinO + sinw * cosO * cosI) * xp + (-sinw * sinO + cosw * cosO * cosI) * yp,
+          z: sinw * sinI * xp + cosw * sinI * yp,
+          a,
+          distance: Math.hypot(xp, yp),
+        };
+      }
+
+      function orbitRadius(au) {
+        const maxR = Math.min(state.w, state.h) * 0.43;
+        return Math.pow(au / 30.06992276, 0.42) * maxR;
+      }
+
+      function project(pos) {
+        const radius = orbitRadius(Math.hypot(pos.x, pos.y));
+        const angle = Math.atan2(pos.y, pos.x);
+        return {
+          x: state.w * 0.5 + Math.cos(angle) * radius,
+          y: state.h * 0.5 + Math.sin(angle) * radius * 0.72,
+          depth: pos.z,
+        };
+      }
+
+      function planetVisualRadius(body) {
+        const earth = 12756;
+        return clamp(Math.pow(body.diameter / earth, 0.42) * 5.8 * state.dpr, 2.4 * state.dpr, 18 * state.dpr);
+      }
+
+      function drawBackground(nowSeconds) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#02030a";
+        ctx.fillRect(0, 0, state.w, state.h);
+
+        for (const star of state.stars) {
+          const twinkle = state.reduced ? 1 : 0.84 + 0.16 * Math.sin(nowSeconds * 0.38 + star.phase);
+          ctx.globalAlpha = star.a * twinkle;
+          ctx.fillStyle = star.warm ? "rgb(255, 196, 145)" : "rgb(185, 214, 255)";
+          const s = Math.max(1, Math.round(state.cell * star.s * 0.34));
+          ctx.fillRect(Math.round(star.x * state.w), Math.round(star.y * state.h), s, s);
+        }
+      }
+
+      function drawSun() {
+        const x = state.w * 0.5;
+        const y = state.h * 0.5;
+        const r = Math.min(state.w, state.h) * 0.028;
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 5.8);
+        glow.addColorStop(0, "rgba(255, 252, 226, 0.96)");
+        glow.addColorStop(0.16, "rgba(255, 202, 105, 0.5)");
+        glow.addColorStop(0.44, "rgba(255, 129, 84, 0.12)");
+        glow.addColorStop(1, "rgba(2, 3, 10, 0)");
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(x, y, r * 5.8, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = "rgb(255, 244, 208)";
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, TAU);
+        ctx.fill();
+      }
+
+      function drawOrbit(body, jd) {
+        const points = 220;
+        ctx.globalAlpha = body.link ? 0.2 : 0.11;
+        ctx.strokeStyle = body.link ? body.accent : "rgba(190, 214, 255, 0.36)";
+        ctx.lineWidth = Math.max(1, state.dpr);
+        ctx.beginPath();
+        for (let i = 0; i <= points; i++) {
+          const fakeJd = J2000 + (i / points) * Math.sqrt(body.elements.a[0] ** 3) * 365.256;
+          const p = project(planetPosition(body, fakeJd));
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+      }
+
+      function drawPlanet(body, projected, front) {
+        const r = planetVisualRadius(body);
+        ctx.globalAlpha = front ? 1 : 0.58;
+        const grad = ctx.createRadialGradient(projected.x - r * 0.34, projected.y - r * 0.32, 0, projected.x, projected.y, r * 1.1);
+        grad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+        grad.addColorStop(0.22, body.color);
+        grad.addColorStop(1, "rgba(8, 10, 18, 0.98)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(projected.x, projected.y, r, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = front ? 0.34 : 0.18;
+        ctx.strokeStyle = body.accent || "rgba(190, 214, 255, 0.44)";
+        ctx.lineWidth = Math.max(1, state.dpr);
+        ctx.beginPath();
+        ctx.arc(projected.x, projected.y, r * 1.52, 0, TAU);
+        ctx.stroke();
+
+        if (body.name === "Saturn") {
+          ctx.save();
+          ctx.translate(projected.x, projected.y);
+          ctx.rotate(-0.34);
+          ctx.globalAlpha = 0.48;
+          ctx.strokeStyle = "rgba(238, 218, 166, 0.72)";
+          ctx.beginPath();
+          ctx.ellipse(0, 0, r * 1.9, r * 0.58, 0, 0, TAU);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      function renderNavigation() {
+        planetLayer.innerHTML = "";
+        linkStrip.innerHTML = "";
+        state.anchors = bodies.filter((body) => body.link).map((body) => {
+          const a = document.createElement("a");
+          a.className = "planet-link";
+          a.href = body.href;
+          a.style.setProperty("--accent", body.accent);
+          a.style.setProperty("--label-dx", `${body.label?.x || 0}px`);
+          a.style.setProperty("--label-dy", `${body.label?.y || 8}px`);
+          a.setAttribute("aria-label", `${body.link}: ${body.name}`);
+          a.innerHTML = `<span class="planet-label"><strong>${body.link}</strong><span>${body.name}</span></span>`;
+          planetLayer.append(a);
+
+          const stripLink = document.createElement("a");
+          stripLink.className = "strip-link";
+          stripLink.href = body.href;
+          stripLink.innerHTML = `<b>${body.link}</b><span>${body.code} / ${body.name}</span>`;
+          linkStrip.append(stripLink);
+          return { body, el: a };
+        });
+      }
+
+      function draw(now) {
+        resize();
+        const elapsed = Math.min(120, now - state.last);
+        state.last = now;
+        if (!state.reduced && !document.hidden) {
+          state.simulatedMs += elapsed * SIM_DAYS_PER_SECOND * 86400;
+        }
+        const jd = julianDate(state.simulatedMs);
+        const nowSeconds = now / 1000;
+
+        drawBackground(nowSeconds);
+        const plotted = bodies.map((body) => {
+          const position = planetPosition(body, jd);
+          return { body, position, projected: project(position) };
+        });
+
+        for (const item of plotted) drawOrbit(item.body, jd);
+        drawSun();
+        plotted.sort((a, b) => a.position.z - b.position.z);
+        for (const item of plotted) drawPlanet(item.body, item.projected, item.position.z >= 0);
+
+        for (const anchor of state.anchors) {
+          const item = plotted.find((entry) => entry.body === anchor.body);
+          const hit = Math.max(42, planetVisualRadius(anchor.body) * 3.4 / state.dpr);
+          anchor.el.style.setProperty("--x", `${item.projected.x / state.dpr}px`);
+          anchor.el.style.setProperty("--y", `${item.projected.y / state.dpr}px`);
+          anchor.el.style.setProperty("--hit", `${hit}px`);
+        }
+
+        epochLabel.textContent = `Epoch ${new Date(state.simulatedMs).toISOString().slice(0, 19)}Z`;
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener("resize", resize, { passive: true });
+      reducedMotion.addEventListener?.("change", () => {
+        state.reduced = reducedMotion.matches;
+      });
+
+      resize();
+      initStars();
+      renderNavigation();
+      requestAnimationFrame(draw);
+    })();
+  </script>
+</body>
+</html>
