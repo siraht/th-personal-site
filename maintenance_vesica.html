@@ -143,11 +143,14 @@
 
       const TAU = Math.PI * 2;
       const DPR_CAP = 2;
-      const INTRO_DONE_AT = 4.05;
-      const FIRST_CIRCLE_DONE_AT = 1.35;
-      const SEPARATION_START_AT = 1.42;
-      const SEPARATION_DONE_AT = 2.75;
-      const ROTATION_START_AT = 3.05;
+      const INTRO_DONE_AT = 2.65;
+      const SEED_DONE_AT = 0.22;
+      const CIRCLE_START_AT = 0.12;
+      const FIRST_CIRCLE_DONE_AT = 1.05;
+      const SECOND_CIRCLE_ALIGNED_AT = 0.78;
+      const SEPARATION_START_AT = 0.9;
+      const SEPARATION_DONE_AT = 2.15;
+      const ROTATION_START_AT = 1.7;
 
       const state = {
         width: 0,
@@ -170,14 +173,6 @@
         t = clamp01(t);
         return t * t * (3 - 2 * t);
       };
-      const easeOutCubic = (t) => 1 - Math.pow(1 - clamp01(t), 3);
-      const easeInOutCubic = (t) => {
-        t = clamp01(t);
-        return t < 0.5
-          ? 4 * t * t * t
-          : 1 - Math.pow(-2 * t + 2, 3) / 2;
-      };
-
       function hash2(x, y) {
         const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
         return n - Math.floor(n);
@@ -226,57 +221,38 @@
         const R = state.radiusCells;
         const t = state.reduced ? INTRO_DONE_AT : seconds;
 
-        let seed = 0;
-        let firstPresence = 0;
-        let secondPresence = 0;
-        let firstRadius = 0;
-        let secondRadius = 0;
-        let secondSeed = 0;
-        let pairProgress = 0;
-        let lens = 0;
-        let idle = 0;
+        const seedBirth = smoothstep(t / SEED_DONE_AT);
+        const circleRaw = clamp01(
+          (t - CIRCLE_START_AT) / (FIRST_CIRCLE_DONE_AT - CIRCLE_START_AT)
+        );
+        const circleGrowth = smoothstep(circleRaw);
+        const separationRaw = clamp01(
+          (t - SEPARATION_START_AT) / (SEPARATION_DONE_AT - SEPARATION_START_AT)
+        );
 
-        if (t < 0.28) {
-          seed = smoothstep(t / 0.28);
-        } else if (t < FIRST_CIRCLE_DONE_AT) {
-          const p = easeOutCubic((t - 0.28) / 1.07);
-          seed = 1 - p * 0.85;
-          firstPresence = smoothstep(p);
-          firstRadius = lerp(0.55, R, p);
-        } else {
-          firstPresence = 1;
-          firstRadius = R;
-        }
+        // Each process begins before its predecessor fully settles. A single
+        // easing pass keeps the geometry moving through every handoff.
+        const pairProgress = smoothstep(separationRaw);
+        const lens = smoothstep((pairProgress - 0.08) / 0.72);
+        const idle = smoothstep((t - ROTATION_START_AT) / 0.55);
 
-        if (t >= FIRST_CIRCLE_DONE_AT) {
-          secondPresence = 1;
-          secondRadius = R;
-        }
+        let seed = seedBirth * (1 - circleGrowth * 0.85);
+        seed *= 1 - lens * 0.72;
 
-        if (t >= SEPARATION_START_AT && t < SEPARATION_DONE_AT) {
-          const p = easeInOutCubic((t - SEPARATION_START_AT) / (SEPARATION_DONE_AT - SEPARATION_START_AT));
-          pairProgress = p;
-          secondSeed = smoothstep(p) * (1 - p * 0.66);
-        } else if (t >= SEPARATION_DONE_AT) {
-          pairProgress = 1;
-          secondPresence = 1;
-          secondRadius = R;
-          secondSeed = 0.34;
-        }
+        const firstPresence = smoothstep(circleGrowth);
+        const firstRadius = circleGrowth > 0
+          ? lerp(0.55, R, circleGrowth)
+          : 0;
 
-        if (t >= SEPARATION_DONE_AT && t < 3.55) {
-          lens = smoothstep((t - SEPARATION_DONE_AT) / 0.8);
-        } else if (t >= 3.55) {
-          lens = 1;
-        }
+        // The second circle quietly coalesces on top of the first and shares
+        // its still-growing radius, remaining invisible until separation.
+        const secondPresence = t >= SECOND_CIRCLE_ALIGNED_AT ? firstPresence : 0;
+        const secondRadius = secondPresence ? firstRadius : 0;
+        const secondSeed = secondPresence
+          ? smoothstep(pairProgress) * (1 - lens * 0.88)
+          : 0;
 
-        if (t >= ROTATION_START_AT) {
-          idle = smoothstep((t - ROTATION_START_AT) / 0.18);
-        }
-
-        // The second circle is full-size and exactly aligned with the first before
-        // separation, so it only becomes perceptible as the two centers pull apart.
-        const separation = easeInOutCubic(pairProgress);
+        const separation = pairProgress;
         const offsetX = -0.5 * R * separation;
         const c1x = offsetX;
         const c2x = offsetX + R * separation;
@@ -454,7 +430,7 @@
               y,
               model.c1x,
               model.c1y,
-              model.firstPresence * (model.lens > 0.98 ? 0.22 : 0.5),
+              model.firstPresence * lerp(0.5, 0.18, model.lens),
               0.58
             );
             const secondCenterAlpha = centerPointAlpha(
@@ -462,7 +438,7 @@
               y,
               model.c2x,
               model.c2y,
-              model.secondSeed * (model.lens > 0.98 ? 0.58 : 1),
+              model.secondSeed,
               0.62
             );
 
